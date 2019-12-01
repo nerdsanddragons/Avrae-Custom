@@ -1,4 +1,4 @@
-!alias feattest embed {{args, cc = argparse(&ARGS&), "Feat Progress"}}
+{{args, cc = argparse(&ARGS&), "Feat Progress"}}
 {{rr = args.last("rr", default=1, type_=int)}}
 {{None if cc_exists(cc) else err("You have not yet setup your intoxication counters, run !intox to set them up! (please don't do this in the RP channels)")}}
 {{dice=['1d20','2d20kh1','2d20kl1'] [args.adv()]}}
