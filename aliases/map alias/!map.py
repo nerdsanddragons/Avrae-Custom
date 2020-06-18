@@ -1,8 +1,3 @@
-!alias map {{args=&ARGS&}}{{defaults='{"size":"26x14", "background":"https://t.ly/KgwG", "options":"hd"}' }}{{get_gvar("5eb8d24b-d660-42e5-bbea-47a659bb0827").replace('"@@@"',str(args)).replace('"&&&"', defaults)}}
-!alias move {{args=&ARGS&}}{{args=['-t',name,'-move']+args if args else []}}{{defaults='{"size":"26x14", "background":"https://t.ly/KgwG", "options":"hd"}' }}{{get_gvar("5eb8d24b-d660-42e5-bbea-47a659bb0827").replace('"@@@"',str(args)).replace('"&&&"', defaults)}}
-!alias over {{args=&ARGS&}}{{args=['-t',name,'-over']+args if args else []}}{{defaults='{"size":"26x14", "background":"https://t.ly/KgwG", "options":"hd"}' }}{{get_gvar("5eb8d24b-d660-42e5-bbea-47a659bb0827").replace('"@@@"',str(args)).replace('"&&&"', defaults)}}
-
-
 tembed 
 <drac2>
 # Set are base variables
@@ -23,6 +18,7 @@ c=combat()
 gt=c.get_combatant if c else None
 debug = ""
 desc = []
+g = load_json(get_gvar("d456fdfa-a292-42a1-ab00-b884e79b702f"))
 # F-Strings like to yell at me for \'s
 newline, targD = "\n", "{targ}"
 </drac2>
@@ -232,6 +228,11 @@ if c:
     overlay = None
   else:
    overlay = None
+  # Search external overlay preset dict
+  mode = [x for x in {g} if args in x]
+  if args.last('t') and gt(args.last('t')) and (args.last('over') in ('mode')):
+   get_gvar(g[mode])
+   desc.append(f"Added overlay to {targ.name}")
   # If, after all the parsing above, we managed to get a proper overlay, continue
   if overlay:
    # Are we attaching this overlay to a target?

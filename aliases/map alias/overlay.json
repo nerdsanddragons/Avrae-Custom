@@ -1,0 +1,74 @@
+{
+  "Abi-Dalzim’s Horrid Wilting": "square,30,gn,{aim},{end}",
+  "Acid Stream": "line,30,5,re,{targ},{aim}",
+  "Aganazzar’s Scorcher": "line,30,5,re,{targ},{aim}",
+  "Antilife Shell": "circle,25,bl,{targ}",
+  "Antimagic Field": "circle,25,bl,{targ}",
+  "Arms of Hadar": "circle,25,ye,{targ}",
+  "Aura of Life": "circle,65,bl,{targ}",
+  "Aura of Purity": "circle,65,bl,{targ}",
+  "Aura of Vitality": "circle,65,re,{targ}",
+  "Barbarian Spirit Shield": "circle,65,bk,{targ}",
+  "Barbarian Storm Aura": "circle,25,bk,{targ}",
+  "Black Tentacles": "square,20,ye,{aim},{end}",
+  "Burning Hands": "cone,15,re,{targ},{aim}",
+  "Call Lightning": "circle,60,ye,{aim}",
+  "Calm Emotions": "circle,20,pu,{aim}",
+  "Circle of Death": "circle,60,gn,{aim}",
+  "Circle of Power": "circle,60,bl,{targ}",
+  "Cloud of Daggers": "square,5,ye,{aim},{end}",
+  "Cloudkill": "circle,40,ye,{aim}",
+  "Colorspray": "cone,15,or,{targ},{aim}",
+  "Cone of Cold": "cone,60,re,{targ},{aim}",
+  "Confusion": "circle,10,pu,{aim}",
+  "Conjure Barage": "cone,60,ye,{targ},{aim}",
+  "Conjure Volley": "circle,40,ye,{aim}",
+  "Create Bonfire": "square,5,ye,{aim},{end}",
+  "Crusader's Mantle": "circle,65,re,{targ}",
+  "Dark Star": "circle,40,re,{aim}",
+  "Darkness": "circle,30,re,{aim}",
+  "Darkness Self": "circle,65,re,{targ}",
+  "Dawn": "circle,30,re,{aim}",
+  "Daylight": "circle,60,re,{aim}",
+  "Delayed Blast Fireball": "circle,20,re,{aim}",
+  "Destructive Wave": "circle,60,re,{targ}",
+  "Detect Evil and Good": "circle,60,b,{targ}",
+  "Detect Magic": "circle,60,b,{targ}",
+  "Detect Poison and Disease": "circle,60,b,{targ}",
+  "Dragon's Breath": "cone,15,bn,{targ},{aim}",
+  "Dust Devil": "square,5,ye,{aim},{end}",
+  "Entangle": "square,20,ye,{aim},{end}",
+  "Erupting Earth": "square,20,bn,{aim},{end}",
+  "Evard's Black Tentacles": "square,20,ye,{aim},{end}",
+  "Faerie Fire": "square,20,re,{aim},{end}",
+  "Fear": "cone,30,or,{targ},{aim}",
+  "Fireball": "circle,20,re,{aim}",
+  "Flame Strike": "circle,10,re,{aim}",
+  "Flaming Sphere": "circle,5,ye,{aim}",
+  "Fog Cloud": "circle,20,ye,{aim}",
+  "Freezing Sphere": "circle,60,re,{aim}",
+  "Globe of Invulnerability": "circle,20,c,{targ}",
+  "Gravity Fissure": "line,100,5,re,{targ},{aim}",
+  "Gravity Sinkhole": "circle,20,re,{aim}",
+  "Grease": "square,10,ye,{aim},{end}",
+  "Hallow": "circle,60,re,{aim}",
+  "Healing Spirit": "square,5,ye,{aim},{end}",
+  "Holy Aura": "circle,60,c,{targ}",
+  "Investiture of Wind": "circle,30,d,{targ}",
+  "Paladin's Aura": "circle,20,bk,{targ}",
+  "Paladin's Aura Improved": "circle,60,bk,{targ}",
+  "Warding Wind": "circle,20,r,{targ}"
+}
+
+gvar = d456fdfa-a292-42a1-ab00-b884e79b702f
+
+
+gn = necromancy
+bl = abjuration
+re = evocation
+ye = conjuration
+gy = divination
+pu = enchantment
+or = illusion
+bn = transmutation
+bk = Class Specific

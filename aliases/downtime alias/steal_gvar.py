@@ -1,5 +1,5 @@
 #steal
-{{d, a, g, s = "Downtime Points", @ , load_json(get_gvar("5ac2cafb-291c-4c00-b29a-074eb4bf31b4")), get_raw().skills}}
+{{d, a, g, s = "Downtime Points", &ARGS&, load_json(get_gvar("5ac2cafb-291c-4c00-b29a-074eb4bf31b4")), get_raw().skills}}
 {{get_cc(d) or err(g.err.tooFewDT)}}
 {{ste=get_raw().skills.stealth+roll('1d20')}}
 {{sle=get_raw().skills.sleightOfHand+roll('1d20')}}
