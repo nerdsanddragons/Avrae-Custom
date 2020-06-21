@@ -4,23 +4,28 @@ tembed
 
 # These are replaced with proper values from the base alias
 args, defaults=argparse("@@@"),"&&&"
-mapsize=defaults.get("size","")
+mapsize=defaults.get("size","10x10") or "10x10"
 mapoptions=defaults.get("options","")
 mapbg=defaults.get("background","")
 mapinfo=""
 mapattach=""
 map="http://otfbm.com/"
 out={}
-col,siz,alph="grbypcd","TSMLHG","ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+col,siz,alph="grbypcd","TSMLHG", ("A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","AA","BB","CC","DD","EE","FF","GG","HH","II","JJ","KK","LL","MM","NN","OO","PP","QQ","RR","SS","TT","UU","VV","WW","XX","YY","ZZ")
 COL,SIZ = {"g":"Forest Green", "r":"Firebrick Red", "b":"Corn Flower Blue", "y":"Gold/Yellow", "p":"Dark Violet", "c":"Deep Sky Blue", "d":"Dark Golden Rod"},{"T":"Tiny", "S":"Small", "M":"Medium", "L":"Large", "H":"Huge", "G":"Gargantuan"}
 overlays=[]
 c=combat()
 gt=c.get_combatant if c else None
 debug = ""
 desc = []
-g = load_json(get_gvar("d456fdfa-a292-42a1-ab00-b884e79b702f"))
+finalMap = ""
+sizeOffset = {"T":0, "S":0, "M":0, "L":1, "H":1, "G":2}
+# We don't have an aim point/target yet
+aimPoint = ""
+aimTarget = ""
 # F-Strings like to yell at me for \'s
-newline, targD = "\n", "{targ}"
+newline, targD, aimD = "\n", "{targ}", "{aim}"
+targPoint = ""
 </drac2>
 <drac2>
 # If we're in combat, check all the things
@@ -178,6 +183,26 @@ if c:
   overlay = args.last('over').split(',')
   # First argument is always the shape
   oShape = overlay[0].lower()
+  # Are we aiming at someone?
+  if args.last('aim'):
+   # If the target is, well, a target, grab its location
+   for target in out:
+    if args.last('aim').lower() in target.lower():
+     aimPoint = out[target]['location']
+     # Is our target larger than medium? If so, we need to offset to adjust
+     if out[target].get('size',"M")[0] in "LHG":
+      aimOffset = sizeOffset.get(out[target].get('size',"M")[0])
+      aimTargX = ''.join(x for x in aimPoint if x.isalpha())
+      aimTargY = int(''.join(y for y in aimPoint if y.isdigit()))
+      aimTargX = alph[alph.index(aimTargX)+aimOffset]
+      aimTargY += aimOffset
+      aimPoint = f"{aimTargX}{aimTargY}"
+     aimTarget = target
+   # If the target wasn't a target, it was coordinates. Use them.
+   if not aimPoint:
+    aimPoint = args.last('aim')
+    aimTarget = args.last('aim').upper()
+
   if oShape == "circle":
    # Circle takes four arguments, shape, size, color, and starting location
    if len(overlay)==4:
@@ -228,17 +253,28 @@ if c:
     overlay = None
   else:
    overlay = None
-  # Search external overlay preset dict
-  mode = [x for x in {g} if args in x]
-  if args.last('t') and gt(args.last('t')) and (args.last('over') in ('mode')):
-   get_gvar(g[mode])
-   desc.append(f"Added overlay to {targ.name}")
   # If, after all the parsing above, we managed to get a proper overlay, continue
   if overlay:
+   # Do we have a -aim? If so, replace {aim} with the aimPoint gathered before, and display who you're aiming at
+   if aimPoint:
+    overdesc = overdesc.replace('{aim}',aimPoint)
    # Are we attaching this overlay to a target?
    if args.last('t') and gt(args.last('t')):
-    # If so, lets attach it to the notes
-    out[targ.name].update({"overlay": overlay})
+    if not aimPoint:
+     # If so, and no -aim, lets attach it to the notes
+     out[targ.name].update({"overlay": overlay})
+    else:
+     # If so, and -aim, lets *not* attach it to the notes, and just display it once
+     targPoint = out[targ.name].get('location','A1')
+     # Is our target Large or bigger? If so, adjust accordingly
+     if out[targ.name].get('size',"M")[0] in "LHG":
+      targOffset = sizeOffset.get(out[targ.name].get('size',"M")[0])
+      TargX = ''.join(x for x in targPoint if x.isalpha())
+      TargY = int(''.join(y for y in targPoint if y.isdigit()))
+      TargX = alph[alph.index(TargX)+targOffset]
+      TargY += targOffset
+      targPoint = f"{TargX}{TargY}"
+     overlays.append(overlay.replace("{targ}", targPoint).replace("{aim}", aimPoint))
     desc.append(overdesc.replace('{targ}', out[targ.name].get('location','A1')) + f", linked to {gt(args.last('t')).name}")
    else: 
     # Otherwise, lets just display it once
@@ -254,7 +290,20 @@ if c:
  # Parse the collected notes and information into the format readable by otfbm.com
  # Removes any quotes in names, as that breaks the map for that target apparently
  people=[f"""{out[target].get('location')}{out[target].get('size','M')[0]}{out[target].get('color',[''])[0]}-{target.replace(' ','_').replace("'","").replace('"','')}"""for target in out if out[target].get('location')]
- overlays += [out[target].get('overlay').replace("{targ}", out[target].get('location','A1')) for target in out if out[target].get('overlay')]
+ # overlays += [out[target].get('overlay').replace("{targ}", out[target].get('location','A1')).replace("{aim}", aimPoint) for target in out if out[target].get('overlay')]
+ for target in out:
+
+  if out[target].get('overlay'):
+   targPoint = out[target].get('location','A1')
+   # Is our target Large or bigger? If so, adjust accordingly
+   if out[target].get('size',"M")[0] in "LHG":
+    targOffset = sizeOffset.get(out[target].get('size',"M")[0])
+    TargX = ''.join(x for x in targPoint if x.isalpha())
+    TargY = int(''.join(y for y in targPoint if y.isdigit()))
+    TargX = alph[alph.index(TargX)+targOffset]
+    TargY += targOffset
+    targPoint = f"{TargX}{TargY}"
+   overlays.append(out[target].get('overlay').replace("{targ}", targPoint).replace("{aim}", aimPoint))
  # Reconvert all of our map information back into the readable note format
  dataout={x:' | '.join([f"{item[0].title()}: {item[1]}"for item in out[x].items()])for x in out}
  # Then set everyones note again. Kinda a chainsaw instead of a scalpal situation here.
@@ -265,14 +314,35 @@ if c:
   [i.set_note(None)for i in combat().combatants]
   people=[]
  # Join everything together and display the map if we aren't displaying the help
- if not (args.get('?') or args.get('help')):
-  return f"""-image "{map}{mapsize}/{f"@{mapoptions}/"if mapoptions else""}{'/'.join(people+overlays)}{f"?bg={mapbg}" if mapbg else ""}" """ + (f"""  -desc "{newline.join(desc)}"  """ if desc else "")
+ if not (args.get('?') or args.get('help') or args.get('spelllist')):
+  finalMap = f"""-image "{map}{mapsize}/{f"@{mapoptions}/"if mapoptions else""}{'/'.join(people+overlays)}{f"?bg={mapbg}" if mapbg else ""}" """
+  return finalMap + (f"""  -desc "{newline.join(desc)}"  """ if desc else "")
 </drac2>
 
 <drac2>
+
+if not c or args.get('spelllist'):
+ spelllist = f"""-desc "{newline.join([f"**{spell}** - `{over}`" for spell, over in load_json(get_gvar("d456fdfa-a292-42a1-ab00-b884e79b702f")).items()])}" """
+ return spelllist
 # If we're not in combat, or "?" or "help" are given as arguments, display the help
-if not c or args.get('?') or args.get('help'):
- help = f"""-title "Dude, where did I park my Tarrasque?"
+elif not c or args.get('?') or args.get('help'):
+ if args.get('overlay'):
+  help = f"""-title "{["Bro","Broski","Brotein","Brosicle","Broseph","Brotastic","Han Brolo","Broba Fett","Brotato Chip","Broseidon","Brochacho","Broebh"][randint(12)]}, I'm so Over this!"
+            -desc "**__Overlay Arguments__**
+            `-over \"circle,<diameter>,<color>,<center>\"` - Creates a circle of a given diameter and color, at the chosen location
+            `-over \"cone,<size>,<color>,<start>,<end>\"` - Creates a circle of a given diameter and color, at the chosen location
+            `-over \"line,<length>,<width>,<color>,<start>,<end>\"` - Creates a circle of a given diameter and color, at the chosen location
+            `-over \"square,<size>,<color>,<center>,<end>\"` - Creates a circle of a given diameter and color, at the chosen location
+            `-aim [target]` - Allows you to aim an overlay at a target. Use `{aimD}` in the `-over` command in order grab it. Works on both locations (A3) and targets (OR3).
+            
+            All of these overlays are displayed just once, unless there is a `-t` arg provided, in which case it will added to the targets notes. You can have the targets location be linked to the location of the overlay by using `{targD}`. 
+            For example `-over circle,30,b,{targD} -t OR1` would cause it to be positioned on top of OR1, regardless of where they move. 
+            If you have a valid `-aim`, it will only display the overlay once, because it doesn't track who you aimed at (currently)
+            To remove a linked overlay, run `-over none` with a `-t` selector.
+
+            If using the `!over` alias, you can use `!over <spell>` to attach the appropriate overlay. You can see a list of available overlays with `!map spelllist`" """.replace(" "*11,"")
+ else:
+  help = f"""-title "Dude, where did I park my Tarrasque?"
             -desc "`!map` - View the map
             `!map [args]` - Edit the map, its combatants, or its overlays
 
@@ -281,7 +351,7 @@ if not c or args.get('?') or args.get('help'):
             **__Main Arguments__**
             `-t <target>` - Select a target for adjusting location, color and size.
             `-mapattach <target>` - Gives a target an effect that contains map information such as size and background
-            `-over <overlay>` - Creates an overlay on the map. Options for thise are described below.
+            `-over <overlay>` - Creates an overlay on the map. Options for these are described in `!map help overlay`.
 
             **__Target Arguments__** - Requires a `-t` target
             `-move [location]` - Sets the `-t` targets location on the map. For example `-move G3`.
@@ -292,21 +362,19 @@ if not c or args.get('?') or args.get('help'):
             `-mapsize [size]` - Sets the size of the map. For example: 20x20
             `-mapbg [url]` - Sets a url to serve as the background. Maps are expected to have a grid scale of 40 px.
             `-mapoptions [options]` - Sets map options. Available options can be seen below.
-            Settings can be viewed by running `!i aoo <mapattachee> map`"
+            Settings can be viewed by running `!i aoo <mapattachee> map`" """
 
-            -f "_ _|**__Overlay Arguments__**
-            `-over \"circle,<diameter>,<color>,<center>\"` - Creates a circle of a given diameter and color, at the chosen location
-            `-over \"cone,<size>,<color>,<start>,<end>\"` - Creates a circle of a given diameter and color, at the chosen location
-            `-over \"line,<length>,<width>,<color>,<start>,<end>\"` - Creates a circle of a given diameter and color, at the chosen location
-            `-over \"square,<size>,<color>,<center>,<end>\"` - Creates a circle of a given diameter and color, at the chosen location
-            All of these overlays are displayed just once, unless there is a `-t` arg provided, in which case it will added to the targets notes. You can have the targets location be linked to the location of the overlay by using `{targD}`. For example `-over circle,30,b,{targD} -t OR1` would cause it to be positioned on top of OR1, regardless of where they move.
-            To remove a linked overlay, run `-over none` with a `-t` selector." 
-
-            -f "Valid Colors|{newline.join([f"`{x[0]}` - {x[1]}" for x in COL.items()])}|inline"
+ help += f"""-f "Valid Colors|{newline.join([f"`{x[0]}` - {x[1]}" for x in COL.items()])}|inline"
             -f "Valid Sizes|{newline.join([f"`{x[0]}` - {x[1]}" for x in SIZ.items()])}|inline"
             -f "Valid Map Options|`d` - Dark mode{newline}`h` - Grid at half transparancy{newline}`n` - Grid hidden{newline}`1`,`2`,`3` - Different zoom options|inline" 
-            -f "OTFBM Help|Additional reading on OTFBM website and functionality can be found [here](https://github.com/digitalsadhu/otf-battlemaps/blob/master/README.md)" """.replace(" "*11,"")
+            -f "OTFBM Help|Additional reading on OTFBM website and functionality can be found [here](http://docs.otfbm.com/)" """
 
- return help
+ return help.replace(" "*11,"")
 </drac2>
 -footer "!map ?{{f" | Map settings attached to {mapattach.name}" if mapattach else ""}}"
+
+<drac2>
+#this is for debugging, only display in testing channels
+# if int(chanid()) in (712795723623694376, 720465301329805332) and overlays and finalMap:
+ # return f"""-f "Debug|{finalMap=} {newline} {overlays=} {newline} {debug=}" """
+</drac2>
