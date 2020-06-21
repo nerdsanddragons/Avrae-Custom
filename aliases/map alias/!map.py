@@ -26,6 +26,8 @@ aimTarget = ""
 # F-Strings like to yell at me for \'s
 newline, targD, aimD = "\n", "{targ}", "{aim}"
 targPoint = ""
+spelllist = [f"**{spell}** - `{over}`" for spell, over in load_json(get_gvar("d456fdfa-a292-42a1-ab00-b884e79b702f")).items()]
+spellPagin = [spelllist[i:i+20] for i in range(0, len(spelllist), 20)]
 </drac2>
 <drac2>
 # If we're in combat, check all the things
@@ -322,8 +324,8 @@ if c:
 <drac2>
 
 if not c or args.get('spelllist'):
- spelllist = f"""-desc "{newline.join([f"**{spell}** - `{over}`" for spell, over in load_json(get_gvar("d456fdfa-a292-42a1-ab00-b884e79b702f")).items()])}" """
- return spelllist
+ spellPage = f"""-desc "{newline.join(spellPagin[ min(len(spellPagin),args.last('page', 1, int)-1)] )}" """
+ return spellPage
 # If we're not in combat, or "?" or "help" are given as arguments, display the help
 elif not c or args.get('?') or args.get('help'):
  if args.get('overlay'):
@@ -371,7 +373,7 @@ elif not c or args.get('?') or args.get('help'):
 
  return help.replace(" "*11,"")
 </drac2>
--footer "!map ?{{f" | Map settings attached to {mapattach.name}" if mapattach else ""}}"
+-footer "!map ?{{f" | Map settings attached to {mapattach.name}" if mapattach else ""}}{{f" | Page {args.last('page',1)} / {len(spellPagin)} | -page # to change" if not c or args.get('spelllist') and len(spellPagin)>1 else "" }}"
 
 <drac2>
 #this is for debugging, only display in testing channels
