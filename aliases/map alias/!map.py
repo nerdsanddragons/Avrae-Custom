@@ -23,11 +23,34 @@ sizeOffset = {"T":0, "S":0, "M":0, "L":1, "H":1, "G":2}
 # We don't have an aim point/target yet
 aimPoint = ""
 aimTarget = ""
+targAimPoint = ""
+targAimTarget = ""
+aimStick = False
+targPoint = ""
 # F-Strings like to yell at me for \'s
 newline, targD, aimD = "\n", "{targ}", "{aim}"
-targPoint = ""
-spelllist = [f"**{spell}** - `{over}`" for spell, over in load_json(get_gvar("d456fdfa-a292-42a1-ab00-b884e79b702f")).items()]
+</drac2>
+<drac2>
+# The default overlays, created by @Nerds and Dragons#2817 
+defaultSpells = load_json(get_gvar("d456fdfa-a292-42a1-ab00-b884e79b702f"))
+spellOverlays = defaultSpells.copy()
+# Grab the user selected spells, and update the main dict
+# This allows the user to replace/update items in the original dict
+[spellOverlays.update(load_json(get_gvar(spells))) for spells in load_json(get('mapOverlays','{}')) if get_gvar(spells)]
+# Iterate over the spell dict, making it a little easier to read.
+# Only select the ones they are searching for, if they are searching
+spelllist = [f"**{spell}** - `{over}`" for spell, over in spellOverlays.items() if args.last('search','').lower() in spell.lower()]
+# Split the list into groups of 20, to ensure it stays a reasonable size
 spellPagin = [spelllist[i:i+20] for i in range(0, len(spelllist), 20)]
+# Do we have a -spell?
+if args.last('spell'):
+ # Loop through our users spellOverlays, looking for that spell
+ for spell in spellOverlays:
+  if args.last('spell').lower() in spell.lower():
+   # If we find it, add the overlay to the args
+   args = argparse(["-over",spellOverlays.get(spell)]+"@@@")
+   # We only care about the first result
+   break
 </drac2>
 <drac2>
 # If we're in combat, check all the things
@@ -111,8 +134,8 @@ if c:
 <drac2>
 if c:
  # If there is a -t argument given, and that target exists as a combatant, modify that target
- if args.last('t') and gt(args.last('t')):
-  targ=gt(args.last('t'))
+ if args.last('t', name) and gt(args.last('t', name)):
+  targ=gt(args.last('t', name))
   # If they don't have a note/location set, add them to the list
   if not out.get(targ.name):
    out[targ.name] = {}
@@ -133,7 +156,7 @@ if c:
 <drac2>
 if c:
  # If there is a -t argument given, and that target exists as a combatant, modify that target
- if args.last('t') and gt(args.last('t')):
+ if args.last('t', name) and gt(args.last('t', name)):
   # If there is a -color arg, change their color
   if args.last('color'):
    color=args.last('color')[0].lower()
@@ -143,16 +166,32 @@ if c:
     # Display the change in color
     desc.append(f"Changing color of {targ.name} to {COL[color]} ({color})")
    # If the color is None, erase the color, setting them back to black
-   elif args.last('color') in (None,"None","none"):
+   elif args.last('color') in ("None","none"):
     _ = out[targ.name].pop('color')
     # Display the change in color
     desc.append(f"Resetting color of {targ.name} to Black")
-  # If there is a -move arg, move them to the new location
 </drac2>
 <drac2>
 if c:
  # If there is a -t argument given, and that target exists as a combatant, modify that target
- if args.last('t') and gt(args.last('t')):
+ if args.last('t', name) and gt(args.last('t', name)):
+  # If there is a -height arg, change their height
+  if args.last('height'):
+   height = args.last('height')
+   # If the height is none or 0, remove height from the target
+   if height in ("None","none","0"):
+    prevHeight = out[targ.name].pop('height')
+    if prevHeight:
+     desc.append(f"{targ.name} is no longer {['above','below'][int(prevHeight.strip(' ft.m'))<0] if prevHeight.strip(' -+ft.m').isdigit() else 'above'} everyone.")
+   else:
+    # Otherwise, set that targets height
+    out[targ.name].update({'height':height})
+</drac2>
+<drac2>
+if c:
+ # If there is a -t argument given, and that target exists as a combatant, modify that target
+ # If no -t, default to current character
+ if args.last('t', name) and gt(args.last('t', name)):
   if args.last('move'):
    prevLoc = out[targ.name].get('location') 
    # Did they have a previous location? If so, lets calculate distance and draw a line
@@ -187,9 +226,12 @@ if c:
   oShape = overlay[0].lower()
   # Are we aiming at someone?
   if args.last('aim'):
+   # Split our aim up, in case we have a |split
+   aim = (args.last('aim').split('|')+[""])[:2]
+   aimStick = aim[1].lower() == "stick"
    # If the target is, well, a target, grab its location
    for target in out:
-    if args.last('aim').lower() in target.lower():
+    if aim[0].lower() in target.lower():
      aimPoint = out[target]['location']
      # Is our target larger than medium? If so, we need to offset to adjust
      if out[target].get('size',"M")[0] in "LHG":
@@ -202,8 +244,8 @@ if c:
      aimTarget = target
    # If the target wasn't a target, it was coordinates. Use them.
    if not aimPoint:
-    aimPoint = args.last('aim')
-    aimTarget = args.last('aim').upper()
+    aimPoint = aim[0]
+    aimTarget = aim[0].upper()
 
   if oShape == "circle":
    # Circle takes four arguments, shape, size, color, and starting location
@@ -225,7 +267,7 @@ if c:
     oLoc    = overlay[3]
     oEloc   = overlay[4]
     overlay = f"""*{oShape}{oSize}{oColor}{oLoc}{oEloc}"""
-    overdesc= f"Creating a {COL[oColor]} cone overlay, {oSize} ft. long, positioned at {oLoc}, aimed at {oEloc}"
+    overdesc= f"Creating a {COL[oColor]} cone overlay, {oSize} ft. long, positioned at {oLoc}, aimed at {aimTarget or oEloc}"
    else:
     overlay = None
   elif oShape == "line":
@@ -238,7 +280,7 @@ if c:
     oLoc    = overlay[4]
     oEloc   = overlay[5]
     overlay = f"""*{oShape}{oSize},{oWidth}{oColor}{oLoc}{oEloc}"""
-    overdesc= f"Creating a {COL[oColor]} line overlay, {oSize} ft. long, {oWidth} ft. wide, starting at {oLoc}, aimed at {oEloc}"
+    overdesc= f"Creating a {COL[oColor]} line overlay, {oSize} ft. long, {oWidth} ft. wide, starting at {oLoc}, aimed at {aimTarget or oEloc}"
    else:
     overlay = None
   elif oShape == "square":
@@ -250,7 +292,7 @@ if c:
     oLoc    = overlay[3]
     oEloc   = overlay[4]
     overlay = f"""*{oShape}{oSize}{oColor}{oLoc}{oEloc}"""
-    overdesc= f"Creating a {COL[oColor]} square overlay, {oSize} ft. wide, positioned at {oLoc}, aimed at {oEloc}"
+    overdesc= f"Creating a {COL[oColor]} square overlay, {oSize} ft. wide, positioned at {oLoc}, aimed at {aimTarget or oEloc}"
    else:
     overlay = None
   else:
@@ -262,9 +304,11 @@ if c:
     overdesc = overdesc.replace('{aim}',aimPoint)
    # Are we attaching this overlay to a target?
    if args.last('t') and gt(args.last('t')):
-    if not aimPoint:
-     # If so, and no -aim, lets attach it to the notes
+    if not aimPoint or (aimPoint and aimStick):
+     # If so, and no -aim (or -aim but also stick), lets attach it to the notes
      out[targ.name].update({"overlay": overlay})
+     if aimStick:
+      out[targ.name].update({"aim": aimTarget})
     else:
      # If so, and -aim, lets *not* attach it to the notes, and just display it once
      targPoint = out[targ.name].get('location','A1')
@@ -283,8 +327,9 @@ if c:
     overlays.append(overlay)
     desc.append(overdesc)
   # If we have a target, but our -over arg is none, we're trying to delete our overlay
-  if args.last('t') and gt(args.last('t')) and (args.last('over') in ("none", None, "None")):
+  if args.last('t') and gt(args.last('t')) and (args.last('over') in ("none", "None")):
    _ = out[targ.name].pop('overlay')
+   _ = out[targ.name].pop('aim')
    desc.append(f"Removed overlay linked to {targ.name}")
 </drac2> 
 <drac2>
@@ -292,9 +337,11 @@ if c:
  # Parse the collected notes and information into the format readable by otfbm.com
  # Removes any quotes in names, as that breaks the map for that target apparently
  people=[f"""{out[target].get('location')}{out[target].get('size','M')[0]}{out[target].get('color',[''])[0]}-{target.replace(' ','_').replace("'","").replace('"','')}"""for target in out if out[target].get('location')]
- # overlays += [out[target].get('overlay').replace("{targ}", out[target].get('location','A1')).replace("{aim}", aimPoint) for target in out if out[target].get('overlay')]
  for target in out:
-
+  # Do they have a height set? If so, display it
+  if out[target].get('height'):
+   desc.append(f"{target} is currently {out[target].get('height').strip('-+')} ft. {['above','below'][int(out[target].get('height').strip(' ft.m'))<0] if out[target].get('height').strip(' -+ft.m').isdigit() else 'above'} everyone.")
+  # Do they have an overlay?
   if out[target].get('overlay'):
    targPoint = out[target].get('location','A1')
    # Is our target Large or bigger? If so, adjust accordingly
@@ -305,7 +352,25 @@ if c:
     TargX = alph[alph.index(TargX)+targOffset]
     TargY += targOffset
     targPoint = f"{TargX}{TargY}"
-   overlays.append(out[target].get('overlay').replace("{targ}", targPoint).replace("{aim}", aimPoint))
+   # If the target has an aim point set
+   if out[target].get('aim'):
+    for aimTarget in out:
+     # We need to check to see if they were targetting a... target
+     if out[target].get('aim').lower() in aimTarget.lower():
+      targAimPoint = out[aimTarget]['location']
+      # Is our aimTarget larger than medium? If so, we need to offset to adjust
+      if out[aimTarget].get('size',"M")[0] in "LHG":
+       targAimOffset = sizeOffset.get(out[aimTarget].get('size',"M")[0])
+       targAimTargX = ''.join(x for x in targAimPoint if x.isalpha())
+       targAimTargY = int(''.join(y for y in targAimPoint if y.isdigit()))
+       targAimTargX = alph[alph.index(targAimTargX)+targAimOffset]
+       targAimTargY += targAimOffset
+       targAimPoint = f"{targAimTargX}{targAimTargY}"
+     # If the aimTarget wasn't a target, it was coordinates. Use them.
+     if not targAimPoint:
+      targAimPoint = out[target].get('aim').upper()
+   # Add each targets overlay to the overlays list
+   overlays.append(out[target].get('overlay').replace("{targ}", targPoint).replace("{aim}", targAimPoint))
  # Reconvert all of our map information back into the readable note format
  dataout={x:' | '.join([f"{item[0].title()}: {item[1]}"for item in out[x].items()])for x in out}
  # Then set everyones note again. Kinda a chainsaw instead of a scalpal situation here.
@@ -322,27 +387,36 @@ if c:
 </drac2>
 
 <drac2>
-
-if not c or args.get('spelllist'):
+# Are we trying to display the spelllist?
+if args.get('spelllist'):
+ # Only grab the page selected, default to first
  spellPage = f"""-desc "{newline.join(spellPagin[ min(len(spellPagin),args.last('page', 1, int)-1)] )}" """
- return spellPage
+ # Add some pizazz
+ return spellPage + f"""-title "Wait, how do you Spell that again?"
+                        -f "Add your own overlays/spells| You can create a uvar (or cvar) named `mapOverlays` containing a list of gvars you or other created in order to add to or change the spells here. The format would be something like `[\"b5a2df67-58c9-4f1d-a240-8fc72a139953\", \"b5a2df67-58c9-4f1d-a240-8fc72a139953\"]`"
+                        -f "`{targD}` and `{aimD}`| These will be replaced by the `-t` target and `-aim` target respectively."  """
 # If we're not in combat, or "?" or "help" are given as arguments, display the help
 elif not c or args.get('?') or args.get('help'):
  if args.get('overlay'):
   help = f"""-title "{["Bro","Broski","Brotein","Brosicle","Broseph","Brotastic","Han Brolo","Broba Fett","Brotato Chip","Broseidon","Brochacho","Broebh"][randint(12)]}, I'm so Over this!"
             -desc "**__Overlay Arguments__**
             `-over \"circle,<diameter>,<color>,<center>\"` - Creates a circle of a given diameter and color, at the chosen location
-            `-over \"cone,<size>,<color>,<start>,<end>\"` - Creates a circle of a given diameter and color, at the chosen location
-            `-over \"line,<length>,<width>,<color>,<start>,<end>\"` - Creates a circle of a given diameter and color, at the chosen location
-            `-over \"square,<size>,<color>,<center>,<end>\"` - Creates a circle of a given diameter and color, at the chosen location
-            `-aim [target]` - Allows you to aim an overlay at a target. Use `{aimD}` in the `-over` command in order grab it. Works on both locations (A3) and targets (OR3).
+            `-over \"cone,<size>,<color>,<start>,<end>\"` - Creates a cone/triangle of a given size and color, starting and aiming where you choose
+            `-over \"line,<length>,<width>,<color>,<start>,<end>\"` - Creates a line of a given length, width, and color, starting and aiming where you choose
+            `-over \"square,<size>,<color>,<center>,<end>\"` - Creates a square of a given size and color, starting and aiming where you choose
+
+            `-spell <spell>` - Grabs a 'spell' from your `mapOverlays` uvar, and adds it as an overlay. Many/most of the default ones contain `{targD}` or `{aimD}` to position and aim them. You can see a list of available overlays with `!map spelllist`
+            `-aim [target]` - Allows you to aim an overlay at a target. Use `{aimD}` in the `-over` command in order grab it. Works on both locations (A3) and targets (OR3). If a `-t` is provided as well, it won't attach the overlay to them.
+            `-aim [target]|stick` - Same as above, but it *will* attach the overlay to a `-t` if provided, and will attach the `-aim` info as well.
             
             All of these overlays are displayed just once, unless there is a `-t` arg provided, in which case it will added to the targets notes. You can have the targets location be linked to the location of the overlay by using `{targD}`. 
             For example `-over circle,30,b,{targD} -t OR1` would cause it to be positioned on top of OR1, regardless of where they move. 
-            If you have a valid `-aim`, it will only display the overlay once, because it doesn't track who you aimed at (currently)
+            If you have a valid `-aim`, it will only display the overlay once, because it doesn't track who you aimed, unless you used `-aim [target]|stick`
             To remove a linked overlay, run `-over none` with a `-t` selector.
 
-            If using the `!over` alias, you can use `!over <spell>` to attach the appropriate overlay. You can see a list of available overlays with `!map spelllist`" """.replace(" "*11,"")
+            If your `-aim` or `-t` is a Large or bigger monster, the alias will do its best to adjust for the size difference."
+
+            -f "Add your own overlays/spells| You can create a uvar (or cvar) named `mapOverlays` containing a list of gvars you or other created in order to add to or change the spells available in `-spell`. The format would be something like `[\"b5a2df67-58c9-4f1d-a240-8fc72a139953\", \"b5a2df67-58c9-4f1d-a240-8fc72a139953\"]`" """.replace(" "*11,"")
  else:
   help = f"""-title "Dude, where did I park my Tarrasque?"
             -desc "`!map` - View the map
@@ -353,12 +427,14 @@ elif not c or args.get('?') or args.get('help'):
             **__Main Arguments__**
             `-t <target>` - Select a target for adjusting location, color and size.
             `-mapattach <target>` - Gives a target an effect that contains map information such as size and background
-            `-over <overlay>` - Creates an overlay on the map. Options for these are described in `!map help overlay`.
+            `-over <overlay>` - Creates an overlay on the map. Options for these are described in `!map help overlay`
+            `-spell <spell>` - Grabs a 'spell' from your `mapOverlays` uvar, and adds it as an overlay. More details found in `!map help overlay`
 
-            **__Target Arguments__** - Requires a `-t` target
+            **__Target Arguments__** - Defaults to your currently active character. Requires a `-t` target if `-over` is used
             `-move [location]` - Sets the `-t` targets location on the map. For example `-move G3`.
             `-color [color]` - Sets the `-t` targets color on the map. `-color none` will reset it to to black. Valid arguments can be seen in the fields below.
             `-size [size]` - Sets the `-t` targets size on the map. `-size none` will reset it back to medium. Valid arguments can be seen in the fields below. 
+            `-height [#]` - Sets the `-t` targets height. The map itself will look the same, but their height will be listed above in the description.
             
             **__Map Arguments__** - Requires the map info to be set with `-mapattach`
             `-mapsize [size]` - Sets the size of the map. For example: 20x20
@@ -373,10 +449,10 @@ elif not c or args.get('?') or args.get('help'):
 
  return help.replace(" "*11,"")
 </drac2>
--footer "!map ?{{f" | Map settings attached to {mapattach.name}" if mapattach else ""}}{{f" | Page {args.last('page',1)} / {len(spellPagin)} | -page # to change" if not c or args.get('spelllist') and len(spellPagin)>1 else "" }}"
+-footer "!map ?{{f" | Map settings attached to {mapattach.name}" if mapattach else ""}}{{(f" | Page {args.last('page',1)} / {len(spellPagin)} | -page # to change page" if len(spellPagin)>1 else "")+" | -search [name] to search" if not c or args.get('spelllist') else "" }}"
 
 <drac2>
-#this is for debugging, only display in testing channels
+# this is for debugging, only display in testing channels
 # if int(chanid()) in (712795723623694376, 720465301329805332) and overlays and finalMap:
- # return f"""-f "Debug|{finalMap=} {newline} {overlays=} {newline} {debug=}" """
+#  return f"""-f "Debug|{finalMap=} {newline} {overlays=} {newline} {debug=}" """
 </drac2>
