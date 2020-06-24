@@ -1,0 +1,2 @@
+!alias trap {{args = &ARGS &}}
+{{get_gvar("gvar address").replace('"@@@"', str(args))}}
