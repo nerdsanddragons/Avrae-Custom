@@ -61,8 +61,10 @@ if args.last('spell'):
     args = argparse(["-over9", spellOverlays.get(spell)] + "@@@")
    # If its a list, its starting with a -over9 and then theres other stuff
    elif typeof(spellOverlays.get(spell)) == "SafeList":
+
     args = argparse(["-over9"] + spellOverlays.get(spell) + "@@@")
    # We only care about the first result
+   debug = args
    break
 </drac2>
 <drac2>
