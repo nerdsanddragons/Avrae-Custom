@@ -1,0 +1,42 @@
+tembed 
+<drac2>
+# These are replaced with proper values from the base alias
+args = argparse("@@@")
+desc = []
+newline = "\n"
+new = ""
+</drac2>
+<drac2>
+if args.last('new') or args.last('delete') or args.last('view'):
+  #First option is to create the preset
+  userPresets=load_json(get("mapPresets", "{}"))
+  if args.last('new', new):
+   for x in args.get('new'):
+    if "," in x:
+     userPresets.update({x.split(",")[0]:x.split(",")[1]})
+    else:
+     err("You must separate the key and value with a comma when adding `-new` entries.")
+   set_uvar("mapPresets",dump_json(userPresets))
+   desc.append(f"Created the mapview preset `{x.split(',')[0]}`")
+  #Here we can remove an already created preset
+  if args.last('delete'):
+   for x in args.get('delete'):
+    userPresets.pop(x)
+   set_uvar("mapPresets",dump_json(userPresets))
+   desc.append(f"Removed Preset `{x}`")
+  #We can view all our created presets
+  if args.last('view'):
+   desc.append(f"```{userPresets}```")
+  return f"""-f "To load a preset type `!map -viewpreset <preset name>`" """ + (f"""  -desc "{newline.join(desc)}"  """ if desc else "")
+else:
+   help = f""" -title "Say hello to my little preset"
+              -desc "This alias allows you to create `-mapview` presets for the alias `!map`
+              
+              `!mappreset -new <preset name>,<mapview preset>` - Creates a new mapview preset and saves it to your uvar `mapPresets`. Example - `!mappreset -new Bedroom,d5:10x10`
+              `!mappreset -delete <preset name>` - Removes a mapview preset from your uvar `mapPresets`
+              `!mappreset -view` - Shows you your full list of created mapview presets
+              
+              To load a preset type `!map -viewpreset <preset name>`" """
+   return help
+</drac2>
+-color <color>
