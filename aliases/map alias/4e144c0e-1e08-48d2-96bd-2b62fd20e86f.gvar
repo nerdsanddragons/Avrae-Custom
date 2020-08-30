@@ -774,14 +774,14 @@ elif not c or args.get('?') or args.get('help'):
             `!map viewlist` - Allows you to see all your saved -mapview presets"
 
             -f "**Map BG Presets**
-            `-newmapbg <mapname>:<url>,<mapsize>,<mapoptions>` - Allows you to create a map bg preset that is saved to your `mapBackgrounds` uvar to be called up using `-mapload`. Example - `!map -newmapbg "Forest":https://i.imgur.com/MlhcGVE.jpg,26x14,hd`
+            `-newmapbg <mapname>:<url>,<mapsize>,<mapoptions>` - Allows you to create a map bg preset that is saved to your `mapBackgrounds` uvar to be called up using `-mapload`. Example - `!map -newmapbg Forest:https://i.imgur.com/MlhcGVE.jpg,26x14,hd`
             `-deletemapbg <mapname>` - Allows you to delete a created map preset.
             
             **Custom Spell Overlays**
             `-newspell <overlay/spell name>:<overlay>` -  Allows you to save custom spell overlays to your `mapOverlays` uvar. Example - `!map -newspell Explosion:circle,30,r,{aim}`
             `-deletespell <spellname>` - Allows you to delete a created spell overlay."
 
-            -f "_ _|Settings can be viewed by running `!i aoo <mapattachee> map`
+            -f "_ _|Settings can be viewed by running `!i aoo <mapattachee> map`"
 
             -f "_ _|`-silent` - If used as last argument, all map settings will update but will not load the image.
 
