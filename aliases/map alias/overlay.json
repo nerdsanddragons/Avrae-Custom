@@ -98,16 +98,3 @@
   "Whirlwind": ["circle,10,E53C3C,{aim}", "-effect", "Whirlwind"],
   "Wrath of Nature": ["squaretop,60,E53C3C,{aim}", "-effect", "Wrath of Nature"]
 }
-
-gvar = d456fdfa-a292-42a1-ab00-b884e79b702f
-
-
-gn = necromancy
-bl = abjuration
-re = evocation
-ye = conjuration
-gy = divination
-pu = enchantment
-or = illusion
-bn = transmutation
-bk = Class Specific
