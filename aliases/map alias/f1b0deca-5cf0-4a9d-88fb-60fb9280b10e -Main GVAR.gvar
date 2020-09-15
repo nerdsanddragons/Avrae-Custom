@@ -1,3 +1,4 @@
+
 tembed 
 <drac2>
 # These are replaced with proper values from the base alias
@@ -18,8 +19,8 @@ mapviewsize = ""
 mapviewlocation = ""
 mapattach = ""
 map="http://otfbm.io/"
-walls = ""
-objects = ""
+objects = []
+walls = []
 out={}
 baseAlph = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 alph = []
@@ -121,12 +122,17 @@ if args.last('mapload') or args.last('loadmap'):
   if (args.last('mapload') or args.last('loadmap')).lower() in maps.lower():
    # If we find it, add the map to the args
    foundMapload = mapBG[maps]
-   if typeof(foundMapload) == 'str':
-    args = argparse(["-walls",  foundMapload] + "@@@")
-   elif typeof(foundMapload) == "SafeList":
+   if typeof(foundMapload) == "str":
     getBG, getSize, getOptions = (foundMapload + ["", ""])[:3]
     args = argparse(["-mapbg", getBG]   + (["-mapsize"  , getSize] if getSize else []) + (["-mapoptions", getOptions]  if getOptions else []) + "@@@")
-   break
+   elif typeof(foundMapload) == "SafeList":
+    for key, value in mapinfo.items():
+     mapbg = foundMapload('mapbg')
+     mapsize = foundMapload('mapsize')
+     mapoptions = foundMapload('mapoptions')
+     walls = foundMapload('walls')
+     objects = foundMapload('objects')
+     break
 </drac2>
 <drac2>
 # Pulling up viewlist to view all created -mapview presets 
@@ -140,9 +146,17 @@ presetPagin = [viewlist[i:i+20] for i in range(0, len(viewlist), 20)]
 # Pulling up objectlist to view all created -object presets 
 presetObjects = load_json(get_gvar("9b15344a-1f09-43b5-b84e-f61e32e4a89a"))
 # Only select the ones they are searching for, if they are searching
-objectlist = [f"""**{objects}** - `{str(over).replace('"',quote)}`""" for objects, over in presetObjects.items() if args.last('search','').lower() in objects.lower()]
+objectlist = [f"""**{objects}**""" for objects, over in presetObjects.items() if args.last('search','').lower() in objects.lower()]
 # Split the list into groups of 20, to ensure it stays a reasonable size
 objectPagin = [objectlist[i:i+20] for i in range(0, len(objectlist), 20)]
+</drac2>
+<drac2>
+# Pulling up tokenlist to view all created tokens 
+userTokens = load_json(get('mapTokens','{}'))
+# Only select the ones they are searching for, if they are searching
+tokenlist = [f"""**{tokens}** - `{str(over).replace('"',quote)}`""" for tokens, over in userTokens.items() if args.last('search','').lower() in tokens.lower()]
+# Split the list into groups of 20, to ensure it stays a reasonable size
+tokenPagin = [tokenlist[i:i+20] for i in range(0, len(tokenlist), 20)]
 </drac2>
 <drac2>
 # If we're in combat, check all the things
@@ -178,15 +192,17 @@ if c:
   mapsize = f"{mapX}x{mapY}" 
   mapbg=mapinfo.get('background')
   mapoptions=mapinfo.get('options')
-  walls=mapinfo.get('walls')
-  objects=mapinfo.get('objects')
+  walls = mapinfo.get('walls')
+  walls = walls.split(', ') if walls else []
+  objects = mapinfo.get('objects')
+  objects = objects.split('/') if objects else []
   if mapinfo.get('view'):
    mapviewlocation, mapviewsize = mapinfo.get('view').split(':')
 </drac2>
 <drac2>
 if c:
  # If theres a -mapsize, -mapbg, -mapoptions, -mapview, -walls, -objects or -mapattach arg, process that and add/replace the effect
- if args.last('mapsize') or args.last('mapbg') or args.last('mapoptions') or args.last('mapview') or args.last('reset') or args.last('mapattach') or args.last('walls') or args.last('object') or args.last('deleteobject'):
+ if args.last('mapsize') or args.last('mapbg') or args.last('mapoptions') or args.last('mapview') or args.last('mapattach') or args.last('walls') or args.last('deletewalls') or args.last('object') or args.last('removeobject'):
   # If the new mapsize is different from the old one, update and display
   if mapsize != args.last('mapsize', mapsize):
    mapSplitX, mapSplitY = args.last('mapsize', mapsize).lower().split('x')
@@ -224,6 +240,8 @@ if c:
      desc.append(f" - Grid Hidden")
     if 'e' in mapoptions:
      desc.append(f" - Disable Border Opacity")
+    if 'f' in mapoptions:	
+     desc.append(f" - Using alternative token font")
     if 'c' in mapoptions:
      gsize = ""
      for char in mapoptions[mapoptions.index('c')+1:]:
@@ -274,45 +292,48 @@ if c:
   #If there is a -wall
   if args.last('walls'):
    if args.last('walls') in ('none', 'None', True, 'true', 'True'):
-    walls = ""
+    walls = []
     desc.append(f"Walls reset")
    else:
-    walls = args.last('walls')
-    desc.append(f"Walls added `{walls}`")
+    inputtedWalls = args.last('walls')
+    walls.append(inputtedWalls)
+    desc.append(f"Walls added `{inputtedWalls}`")
+  if args.last('deletewalls'):
+   inputtedWalls = args.last('deletewalls')
+   walls.remove(inputtedWalls)
+   desc.append(f"Walls removed `{inputtedWalls}`")
   #If there is a -object call
   if args.last('object'):
    presetObjects = load_json(get_gvar("9b15344a-1f09-43b5-b84e-f61e32e4a89a"))
    if args.last('object') in ('none', 'None', True, 'true', 'True'):
-    objects = ""
+    objects = []
     desc.append(f"Objects reset")
    else:
-    foundObject = "There is no object by that name"
+    foundObject = ""
     argsObject = args.last("object").lower().split(":")
     for object in presetObjects:
      if argsObject[1] in object.lower():
       foundObject = presetObjects[object]
       break
-    objectLocation = argsObject[0]
-    loadedObject=objectLocation+foundObject+"/"
-    #If there currently is nothing stored in the variable -object
-    if not objects:
-     objects = objectLocation+foundObject+"/"
-    #If there is a value in the variable, join the last argument onto it
+    if foundObject:
+     objectLocation = argsObject[0]
+     loadedObject=objectLocation+foundObject
+     objects.append(loadedObject)
+     desc.append(f"Object added `{object}:{loadedObject}`")
     else:
-     objects = f"{objects}{loadedObject}"
-    desc.append(f"Object added `{object}`")
-  if args.last('deleteobject'):
-   presetObjects = load_json(get_gvar("9b15344a-1f09-43b5-b84e-f61e32e4a89a"))
+     err("Did not find object")
+  if args.last('removeobject'):
+   presetObjects = load_json(get_gvar("9b15344a-1f09-43b5-b84e-f61e32e4a89a"))     
    foundObject = "There is no object by that name"
-   argsObject = args.last("deleteobject").lower().split(":")
+   argsObject = args.last("removeobject").lower().split(":")
    for object in presetObjects:
     if argsObject[1] in object.lower():
      foundObject = presetObjects[object]
      break
-   if foundObject in objects and argsObject[0]:
-    objectToDelete = f"{argsObject[0]}{foundObject}/"
-    objects = objects.replace(objectToDelete, "")
-    desc.append(f"Object `{objectToDelete}` was removed") 
+   objectLocation = argsObject[0]
+   loadedObject=objectLocation+foundObject
+   objects.remove(loadedObject)
+   desc.append(f"Object `{object}:{loadedObject}` was removed") 
   # If there is a -mapattach, and its a valid target in init
   if args.last('mapattach') and gt(args.last('mapattach')):
    # First check if there is an existing mapattach, and if its the same as the new one, then remove their map effect
@@ -324,7 +345,8 @@ if c:
   if mapattach and mapattach.get_effect('map'):
    mapattach.remove_effect('map')
   # Format everything appropriately
-  neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f" ~ Walls: {walls}" if walls else""}{f" ~ Objects: {objects}" if objects else""}{f" ~ View: {mapviewlocation}:{mapviewsize}"}""".strip(" ~")
+  setMapview = f"{mapviewlocation}:{mapviewsize}"
+  neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f' ~ Walls: {", ".join(walls)}' if walls else ""}{f' ~ Objects: {"/".join(objects)}' if objects else ""}{f" ~ View: {setMapview}" if setMapview else ""}""".strip(" ~")
   # If mapattach exists, apply the new effect, and display
   if mapattach:
    mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
@@ -334,26 +356,16 @@ if c:
    desc.append("Map settings changed, but no map attach target was found. Settings not saved.")
 </drac2>
 <drac2>
-#To save the current created map that uses walls and doors
-if args.last('savewallsmap'):
- userCreatedMaps=load_json(get("mapBackgrounds", "{}"))
- keyMap = args.last('savewallsmap')
- savedMap = (f"{keyMap}") + ":" + (f"{walls}")
- userCreatedMaps.update({savedMap.split(":")[0]:savedMap.split(":")[1]})
- set_uvar("mapBackgrounds",dump_json(userCreatedMaps))
- desc.append(f"Created the Map `{keyMap}")
-</drac2>
-<drac2>
 #This allows the user to save -mapview presets to their mapPresets uvar to be called using -loadview
-if args.last('newview') or args.last('deleteview'):
+if args.last('saveview') or args.last('deleteview'):
   #First option is to create the preset
   userPresets=load_json(get("mapPresets", "{}"))
-  if args.last('newview'):
-   for addNewview in args.get('newview'):
+  if args.last('saveview'):
+   for addNewview in args.get('saveview'):
     if "," in addNewview:
      userPresets.update({addNewview.split(",")[0]:addNewview.split(",")[1]})
     else:
-     err("You must separate the key and value with a comma when adding `-newview` entries.")
+     err("You must separate the key and value with a comma when adding `-saveview` entries.")
    set_uvar("mapPresets",dump_json(userPresets))
    desc.append(f"Created the mapview preset `{addNewview.split(',')[0]}`")
    #Here we can remove an already created preset
@@ -367,41 +379,47 @@ if args.last('newview') or args.last('deleteview'):
 #This allows the user to create custom mapbg presets and save them to their mapBackgrounds uvar to be loaded using -mapload
 if args.last('newmapbg') or args.last('deletemapbg') or args.last('savemap') or args.last('deletemap'):
  #First option is to create mapbg preset
+ userMaps = load_json(get('mapBackgrounds','{}'))
  if args.last('newmapbg') or args.last('savemap'):
-  userMaps = load_json(get('mapBackgrounds','{}'))
-  for addMapbg in (args.get('newmapbg') or args.get('savemap')):
-   if ":" in addMapbg:
-     userMaps.update({addMapbg.split(":")[0]:addMapbg.split(":", 1)[1].split(',')})
-     desc.append(f"Created the mapbg `{addMapbg.split(':')[0].upper()}`")
-   else:
-    err("You must separate the map name from the map info with a : and url, size and options with a comma when adding `-savemap` entries.")
-   set_uvar("mapBackgrounds",dump_json(userMaps))
-   desc.append(f"Created the mapbg `{addMapbg.split(':')[0]}`")
+  mapName = (args.last('savemap') or args.last('newmapbg')).lower()
+  mapBGState = {}
+  formedMap = {mapName:mapBGState}
+  for key, value in mapinfo.items():
+   if value:
+    if mapinfo.get('mapbg')!= None:
+     mapBGState["mapbg"] = mapinfo.get('background')
+    mapBGState["mapsize"] = mapsize
+    if mapinfo.get('mapoptions')!= None:
+     mapBGState["mapoptions"] = mapinfo.get('options')
+    if mapinfo.get('walls')!= None:
+     mapBGState["walls"] = mapinfo.get('walls').split(', ')
+    if mapinfo.get('objects')!= None:
+     mapBGState["objects"] = mapinfo.get('objects').split('/')
+  userMaps.update(formedMap)
+  set_uvar("mapBackgrounds",dump_json(userMaps))
+  desc.append(f"Created the mapbg `{mapName}`")
  #Second option is to delete an already created map
  if args.last('deletemapbg') or args.last('deletemap'):
-  foundDeletemapbg = "Did not find that map"
-  argDeletemapbg = (args.last("deletemapbg") or args.last('deletemap')).lower()
-  for searchDeletemapbg in userMaps:
-   if argDeletemapbg in searchDeletemapbg.lower():
-    foundDeletemapbg = userMaps.pop(searchDeletemapbg)
+  argDeletemap = (args.last("deletemapbg") or args.last('deletemap')).lower()
+  for searchMap in userMaps:
+   if argDeletemap in searchMap.lower():
+    userMaps.pop(searchMap)
     break
-   else:
-    err("Did not find the map you are trying to delete.")
   set_uvar("mapBackgrounds",dump_json(userMaps))
-  desc.append(f"Removed Map BG `{searchDeletemapbg}`")
+  desc.append(f"Removed Map BG `{argDeletemap}`")
 </drac2>
 <drac2>
 #Here we allow the user to save spell overlays in their mapOverlays uvar
-if args.last('newspell') or args.last('deletespell'):
+if args.last('savespell') or args.last('deletespell'):
  userOverlays = load_json(get('mapOverlays','{}'))
  #First option is to create spell overlay
- if args.last('newspell'):
+ if args.last('savespell'):
   userOverlays = load_json(get('mapOverlays','{}'))
-  for addNewspell in args.get('newspell'):
+  for addNewspell in args.get('savespell'):
    if ":" in addNewspell:
     userOverlays.update({addNewspell.split(":")[0]:addNewspell.split(":")[1]})
    else:
-    err("You must separate the key and value with a colon when adding `-newspell` entries.")
+    err("You must separate the key and value with a colon when adding `-savespell` entries.")
   set_uvar("mapOverlays",dump_json(userOverlays))
   desc.append(f"Created the overlay preset `{addNewspell.split(':')[0].upper()}`")
  #second option is to delete an already created spell/overlay
@@ -540,6 +558,8 @@ if c:
       desc.append(f" - Grid Hidden")
      if 'e' in options:
       desc.append(f" - Disable Border Opacity")
+     if 'f' in mapoptions:	
+      desc.append(f" - Using alternative token font")
      if 'c' in options:
       gsize = ""
       for char in options[options.index('c')+1:]:
@@ -607,6 +627,19 @@ if c:
     # Otherwise, set that targets height
     out[targ.name].update({'height':height})
 </drac2>
+<drac2> 
+#This allows the user to load a token to a -t
+if args.last('t', combat().me.name if combat().me else None) and gt(args.last('t', combat().me.name if combat().me else None)):
+ if args.last('loadtoken'):
+  userPresets=load_json(get('mapTokens', '{}'))
+  argsTokenload = args.last('loadtoken').lower()
+  for searchTokenload in userPresets:
+   if argsTokenload in searchTokenload.lower():
+    foundTokenload = userPresets.get(searchTokenload)
+    desc.append(f"Loaded token `{searchTokenload}`.")
+    break
+  out[targ.name].update({'token':foundTokenload})
+</drac2>
 <drac2>
 if c:
  # If there is a -t argument given, and that target exists as a combatant, modify that target
@@ -623,6 +656,25 @@ if c:
     # Otherwise, set that targets token
     out[targ.name].update({'token':token})
     desc.append(f"{targ.name} is now using the shortcode `{token}` as a token.")
+</drac2>
+<drac2>
+#Load user saved token list
+if args.last('savetoken') or args.last('deletetoken'):
+ if args.last('savetoken'):
+  userTokens = load_json(get('mapTokens','{}'))
+  for addNewToken in args.get('savetoken'):
+   if ":" in addNewToken:
+    userTokens.update({addNewToken.split(":")[0]:addNewToken.split(":")[1]})
+   else:
+    err("You must separate the key and value with a colon when adding `-savetoken` entries.")
+  set_uvar("mapTokens",dump_json(userTokens).lower())
+  desc.append(f"Created the Token `{addNewToken.split(':')[0].upper()}`")
+ if args.last('deletetoken'):
+  userTokens = load_json(get('mapTokens','{}'))
+  argToken = args.last("deletetoken").lower()
+  userTokens.pop(argToken)
+  set_uvar("mapTokens",dump_json(userTokens).lower())
+  desc.append(f"Removed Token `{argToken.upper()}`")
 </drac2>
 <drac2>
 if c:
@@ -935,12 +987,12 @@ if c:
   people=[]
  # Join everything together and display the map if we aren't displaying the help
  overlays = [f"*{overlay.strip('*')}" for overlay in overlays]
- if not any(args.get(arg) for arg in ('?', 'help', 'spelllist', 'spellbook', 'maplist', 'bglist', 'backgroundlist', 'viewlist', 'objectlist')):
+ if not any(args.get(arg) for arg in ('?', 'help', 'spelllist', 'spellbook', 'maplist', 'bglist', 'backgroundlist', 'viewlist', 'objectlist', 'tokenlist')):
   if args.last('silent'):
-   finalMap = f"""{map}{mapsize}{f"/{mapviewlocation}:{mapviewsize}" if mapviewsize and mapviewlocation else ""}/{f"{walls}/" if walls else ""}{f"@{mapoptions}/"if mapoptions else""}{f"{objects}" if objects else ""}{'/'.join(people+overlays)}{f"?bg={mapbg}" if mapbg else ""}"""
+   finalMap = f"""{map}{mapsize}{f"/{mapviewlocation}:{mapviewsize}" if mapviewsize and mapviewlocation else ""}/{f'_{"".join(walls)}/' if walls else ""}{f"@{mapoptions}/"if mapoptions else""}{f'{"/".join(objects)}/' if objects else ""}{'/'.join(people+overlays)}{f"?bg={mapbg}" if mapbg else ""}"""
    return f"""-f "[Map]({finalMap})" """ + (f"""  -desc "{newline.join(desc)}"  """ if desc else "")
   else:
-   finalMap = f"""{map}{mapsize}{f"/{mapviewlocation}:{mapviewsize}" if mapviewsize and mapviewlocation else ""}/{f"{walls}/" if walls else ""}{f"@{mapoptions}/"if mapoptions else""}{f"{objects}" if objects else ""}{'/'.join(people+overlays)}{f"?bg={mapbg}" if mapbg else ""}"""
+   finalMap = f"""{map}{mapsize}{f"/{mapviewlocation}:{mapviewsize}" if mapviewsize and mapviewlocation else ""}/{f'_{"".join(walls)}/' if walls else ""}{f"@{mapoptions}/"if mapoptions else""}{f'{"/".join(objects)}/' if objects else ""}{'/'.join(people+overlays)}{f"?bg={mapbg}" if mapbg else ""}"""
    return f"""-image "{finalMap}" -f "[Map]({finalMap})" """ + (f"""  -desc "{newline.join(desc)}"  """ if desc else "")
 </drac2>
 
@@ -967,7 +1019,7 @@ if args.get('spelllist') or args.get('spellbook'):
   spellPage = f"""-desc "No results found{f" for search term `{args.last('search')}`" if args.last('search') else ''}." """
  # Add some pizazz
  return spellPage + f"""-title "Wait, how do you Spell that again?"
-                        -f "Add your own overlays/spells| You can add your own overlays/spells by running the command `-newspell <overlay/spell name>:<overlay>`"
+                        -f "Add your own overlays/spells| You can add your own overlays/spells by running the command `-savespell <overlay/spellname>:<overlay>`"
                         -f "`{targD}` and `{aimD}`| These will be replaced by the `-t` target and `-aim` target respectively."  """
 # Are we trying to display the maplist?
 elif args.get('maplist') or args.get('bglist') or args.get('backgroundlist'):
@@ -987,7 +1039,7 @@ elif args.get('viewlist'):
   presetPage = f"""-desc "No results found{f" for search term `{args.last('search')}`" if args.last('search') else ''}." """
  # Add some pizazz
  return presetPage + f"""-title "Say hello to my little preset"
-                        -f "Add your own `-mapview` presets| You can create your own presets by running the command `-newview <presetname>,<mapview preset>`"  """
+                        -f "Add your own `-mapview` presets| You can create your own presets by running the command `-saveview <presetname>,<mapview preset>`"  """
 elif args.get('objectlist'):
      # Only grab the page selected, default to first
  if objectPagin:
@@ -996,6 +1048,14 @@ elif args.get('objectlist'):
   objectPage = f"""-desc "No results found{f" for search term `{args.last('search')}`" if args.last('search') else ''}." """
  # Add some pizazz
  return objectPage + f"""-title "I've got a lovely bunch of objects"  """
+elif args.get('tokenlist'):
+     # Only grab the page selected, default to first
+ if tokenPagin:
+  tokenPage = f"""-desc "{newline.join(tokenPagin[ min(len(tokenPagin),args.last('page', 1, int)-1)] )}" """
+ else:
+  tokenPage = f"""-desc "No results found{f" for search term `{args.last('search')}`" if args.last('search') else ''}." """
+ # Add some pizazz
+ return tokenPage + f"""-title "Token for your thoughts"  """
 # If we're not in combat, or "?" or "help" are given as arguments, display the help
 elif not c or args.get('?') or args.get('help'):
  if args.get('overlay') or args.get('over') or args.get('overlays'):
@@ -1024,7 +1084,7 @@ elif not c or args.get('?') or args.get('help'):
             If your `-aim` or `-t` is a Large or bigger monster, the alias will do its best to adjust for the size difference.
 
             **Custom Spell Overlays**
-            `-newspell <overlay/spell name>:<overlay>` -  Allows you to save custom spell overlays to your `mapOverlays` uvar. Example - `!map -newspell Explosion:circle,30,r,{aimD}`
+            `-savespell <overlay/spellname>:<overlay>` -  Allows you to save custom spell overlays to your `mapOverlays` uvar. Example - `!map -savespell Explosion:circle,30,r,{aimD}`
             `-deletespell <spellname>` - Allows you to delete a created spell overlay."             
             """.replace(" "*11,"") + colorhelp
  elif args.get('map') or args.get('options') or args.get('dm') or args.get('manage'):
@@ -1039,8 +1099,11 @@ elif not c or args.get('?') or args.get('help'):
             `-mapoptions [options]` - Sets map options. Available options can be seen below."
 
             -f "_ _|
-            `-walls <code>` - Allows you to create your own map with walls/doors. Information on this code can be found [here](http://docs.otfbm.com/#/wallsanddoors)
-            `-savewallsmap <map name>` - Saves your map you created using walls/doors
+            `-walls <code>` - Allows you to place walls/doors. Walls can be added one at a time. Information on this code can be found [here](http://docs.otfbm.com/#/wallsanddoors)
+            `-deletewalls <code>` - Allows you to delete an individual wall
+            `-object <location>:<object>` - Adds an object to the map. Some objects can be placed over multiple squares. `!map objectlist` to view available objects.
+            `-deleteobject <location>:<object>` - Deletes the specified object from the map"
+            -f "_ _|
             `-loadmap <mapname>` - Loads a 'map' from either the preset list or your `mapBackgrounds` uvar, and adds it to `-mapattach`. You can see a list of available maps with `!map maplist`
             `-mapview <location>:<gridsize>` - To view a portion of the background image set the Top-Left corner location and the size of the map you want to see: `!map -mapview c3:15x15`. To return back to default set grid size: `!map -mapview reset`
             `-mapview <location>:<location>` - You can also use relative coordinates, such as `-mapview A3:K12` instead of `-mapview A3:11x10`"
@@ -1055,10 +1118,10 @@ elif not c or args.get('?') or args.get('help'):
 
             -f "_ _|**__Preset Arguments__**
             **Mapview Presets**
-            `-newview <presetname>,<mapview preset>` - Allows you to create a preset for -mapview that is saved in your `mapPresets` uvar. Example: `!map -newview Ambush,d5:8x8`
+            `-saveview <presetname>,<mapview preset>` - Allows you to create a preset for `-mapview` that is saved in your `mapPresets` uvar. Example: `!map -saveview Ambush,d5:8x8`
             `-deleteview <presetname>` - Allows you to delete an already created `-mapview` preset.
             `-loadview <presetname>` - Loads a created preset for `-mapview`
-            `!map viewlist` - Allows you to see all your saved -mapview presets
+            `!map viewlist` - Allows you to see all your saved `-mapview` presets
 
             **Map BG Presets**
             `-savemap <mapname>:<url>,<mapsize>,<mapoptions>` - Allows you to create a map bg preset that is saved to your `mapBackgrounds` uvar to be called up using `-loadmap`. Example - `!map -savemap Forest:https://i.imgur.com/MlhcGVE.jpg,26x14,hd`
@@ -1070,6 +1133,7 @@ elif not c or args.get('?') or args.get('help'):
             `h%` - Grid transparancy. `h10` would set it to 10% transparancy, `h90` would be 90%
             `n` - Grid hidden
             `e` - Disable border opacity
+            `f` - Use alternative token font
             `c<value>` - Set the gridsize in pixels (Default is 40)
             `o<value>:<value>` - Set the background image offset in pixels
             If you are setting the zoom level, you have to set it as the first option.
@@ -1093,6 +1157,9 @@ elif not c or args.get('?') or args.get('help'):
             `-color [color]` - Sets the targets color on the map. `-color none` will reset it to to black. Valid arguments can be seen in the fields below.
             `-token [shortcode]` - Sets the image for the token based on the shortcode provided by `-tokenimport`
             `-tokenimport [url]` - Given a url to an image, provides a link to a shortcode for `-token`
+            `-savetoken <tokenName>:<shortcode>` - Saves a token to your `mapTokens` uvar. `!map tokenlist` to see your saved tokens. 
+            `-deletetoken <tokenName>` - Deletes a token you have saved
+            `-loadtoken <tokenName>` - Allows you to load a saved token to a target. Example: `!map -t go1 -loadtoken goblin`
             `-size [size]` - Sets the targets size on the map. `-size none` will reset it back to medium. Valid arguments can be seen in the fields below. 
             `-height [#]` - Sets the targets height. The map itself will look the same, but their height will be listed above in the description.
             `-note [note]` - Sets a generic note on the target  
@@ -1115,6 +1182,8 @@ elif not c or args.get('?') or args.get('help'):
 if int(chanid()) in (712795723623694376, 720465301329805332, 746474041577308301) and finalMap:
  return f"""-f "Debug (Only appears in this channel)|```{overlays=}
  {people=}
- {debug=}```" """
+ {debug=}
+ {objects=}
+ {walls=}```" """
 </drac2>
 -color <color>
