@@ -1,3 +1,0 @@
-!alias dt tembed {{g = load_json(get_gvar("03de1c2a-db68-4835-87aa-24b71c26e9b2"))}}
-{{mode = ([x for x in g if "&1&".lower() in x]+['help?'])[0]}}
-{{get_gvar(g[mode]).replace("&AR"+"GS&", str( & ARGS&[1:]))}}
