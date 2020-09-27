@@ -198,14 +198,14 @@ if c:
   objects = mapinfo.get('objects')
   objects = objects.split('/') if objects else []
   loadedjson=mapinfo.get('json')
-  loadedjson = loadedjson.split('&load=') if loadedjson else []
+  loadedjson = loadedjson.split(', ') if loadedjson else []
   if mapinfo.get('view'):
    mapviewlocation, mapviewsize = mapinfo.get('view').replace('::',':').split(':')
 </drac2>
 <drac2>
 if c:
  # If theres a -mapsize, -mapbg, -mapoptions, -mapview, or -mapattach arg, process that and add/replace the effect
- if any(args.last(thisArg) for thisArg in ('mapsize', 'mapbg', 'bg', 'mapoptions', 'options', 'mapview', 'view', 'mapattach', 'attach', 'wall', 'deletewall', 'object', 'deleteobject', 'loadmap', 'loadjson')):
+ if any(args.last(thisArg) for thisArg in ('mapsize', 'mapbg', 'bg', 'mapoptions', 'options', 'mapview', 'view', 'mapattach', 'attach', 'wall', 'deletewall', 'object', 'deleteobject', 'loadmap', 'loadjson', 'deletejson')):
   # If the new mapsize is different from the old one, update and display
   if mapsize != args.last('mapsize', mapsize):
    mapSplitX, mapSplitY = args.last('mapsize', mapsize).lower().split('x')
@@ -229,8 +229,16 @@ if c:
       inputtedJson = args.last('loadjson')
       loadedjson.append(inputtedJson)
       desc.append(f"Loaded JSON File")
+  if args.last('deletejson'):
+    inputtedjson = args.last('deletejson')
+    remjson = [json for json in loadedjson if inputtedjson.lower() != json.lower()]
+    if len(loadedjson) != len(remjson):
+      desc.append(f"JSON removed: `{inputtedjson}`")
+      loadedjson = remjson
+    else:
+      desc.append(f"Could not find JSON: `{inputtedjson}`")
   if mapoptions != args.last('mapoptions', args.last('options', mapoptions)):
-  # If the new mapoptions are different from the old ones, update and display
+   #If the new mapoptions are different from the old ones, update and display
    if args.last('mapoptions', args.last('options')) in ('none', 'None', True, 'true', 'True', None):
     mapoptions = ""
     desc.append(f"Map options reset")
@@ -359,7 +367,7 @@ if c:
    mapattach.remove_effect('map')
   # Format everything appropriately
   setMapView = f"{mapviewlocation}:{mapviewsize}"
-  neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f" ~ Walls: {', '.join(walls)}" if walls else""}{f' ~ Objects: {"/".join(objects)}' if objects else ""}{f' ~ JSON: {"&load=".join(loadedjson)}' if loadedjson else ""}{f" ~ View: {setMapView}" if setMapView.strip(':') else ''}""".strip(" ~")
+  neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ View: {setMapView}" if setMapView.strip(':') else ''}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f" ~ Walls: {', '.join(walls)}" if walls else""}{f' ~ Objects: {"/".join(objects)}' if objects else ""}{f' ~ JSON: {", ".join(loadedjson)}' if loadedjson else ""}""".strip(" ~")
   # If mapattach exists, apply the new effect, and display
   if mapattach:
    mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
@@ -981,7 +989,7 @@ if args.last('distance'):
   else:
     degree = 0 if deltaY > 0 else 180 if deltaY < 0 else 90 if deltaX > 0 else 270
   card = cardinal[floor((degree)//22.5)%16]
-  colr = (args.last('color', out[targ.name].get('color','p')) + " ").strip("#~").lower()
+  colr = ((out[targ.name].get('color','p')) + " ").strip("#~").lower()
   colr = colr[:colr.index(" ")]
   if len(colr) in (3, 6) and not colr.strip("abcdef1234567890"):
    colr = f"~{colr}"
@@ -1255,6 +1263,8 @@ if args.last('savebattle') or args.last('deletebattle') or args.last('loadbattle
      mapBGState["walls"] = mapinfo.get('walls').split(', ')
     if mapinfo.get('objects')!= None:
      mapBGState["objects"] = mapinfo.get('objects').split('/')
+    if mapinfo.get('json')!= None:
+     mapBGState["json"] = mapinfo.get('json').split(', ')
     break
   savedBGState = {"mapattach":mapBGState}
   savedBGState.update(out)
@@ -1282,13 +1292,19 @@ if args.last('savebattle') or args.last('deletebattle') or args.last('loadbattle
       if all([combat().get_combatant(i) for i in foundCombatants.keys()]):
        out = dict(list(foundBattle.items())[1:])
        foundMapload = foundBattle["mapattach"]
-       mapbg = foundMapload["mapbg"]
+       if "mapbg" in foundMapload:
+        mapbg = foundMapload["mapbg"]
        mapsize = foundMapload["mapsize"]
-       mapoptions = foundMapload["mapoptions"]
-       walls = foundMapload["walls"]
-       objects = foundMapload["objects"]
-       setMapview = f"{mapviewlocation}:{mapviewsize}"
-       neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f' ~ Walls: {", ".join(walls)}' if walls else ""}{f' ~ Objects: {"/".join(objects)}' if objects else ""}{f" ~ View: {setMapview}" if setMapview else ""}""".strip(" ~")
+       if "mapoptions" in foundMapload:
+        mapoptions = foundMapload["mapoptions"]
+       if "walls" in foundMapload:
+        walls = foundMapload["walls"]
+       if "objects" in foundMapload:
+        objects = foundMapload["objects"]
+       if "json" in foundMapload:
+        loadedjson = foundMapload["json"]
+       setMapView = f"{mapviewlocation}:{mapviewsize}"
+       neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ View: {setMapView}" if setMapView.strip(':') else ''}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f" ~ Walls: {', '.join(walls)}" if walls else""}{f' ~ Objects: {"/".join(objects)}' if objects else ""}{f' ~ JSON: {", ".join(loadedjson)}' if loadedjson else ""}""".strip(" ~")
        if mapattach:
         mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
        desc.append(f"Loaded the battle `{argsBattle.title()}`")
