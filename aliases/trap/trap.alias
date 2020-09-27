@@ -1,0 +1,1 @@
+{{args=&ARGS&}}{{get_gvar("5eb8d24b-d660-42e5-bbea-47a659bb0827").replace('"@@@"',str(args))}}

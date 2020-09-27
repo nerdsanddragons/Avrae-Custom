@@ -1,0 +1,96 @@
+<drac2>
+if args.last('loadurl'):
+ loadedArgs = args.last('loadurl')
+ if [x for x in loadedArgs if loadedArgs in "?bg="]:
+  seperatedInitalLoad = loadedArgs.split("?bg=")
+  seperatedLoad = seperatedInitalLoad[0].split("/")
+  mapbg = seperatedInitalLoad[1]
+ else:
+  seperatedLoad = loadedArgs.split("/")
+ walls = [searchLoad for searchLoad in seperatedLoad if searchLoad.startswith('_')]
+ mapsize = seperatedLoad[3]
+ if [x for x in seperatedLoad if x in "@"]:
+  setMapOption = f"{[searchLoad for searchLoad in seperatedLoad if searchLoad.startswith('@')]}"
+  mapoptions = setMapOption.replace('@', '').replace("'", "").replace("[", "").replace("]", "")
+ mapviewlocation = mapviewsize = ""
+ setMapview = ""
+ neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f' ~ Walls: {", ".join(walls)}' if walls else ""}{f' ~ Objects: {"/".join(objects)}' if objects else ""}{f" ~ View: {setMapview}" if setMapview else ""}""".strip(" ~")
+ if mapattach:
+  mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
+ desc.append(f"Loaded {loadedArgs}")
+</drac2>
+
+<drac2>
+if args.last('distance'):
+ argsDist = args.last('distance').split(':')
+ height = int(argsDist[2] if len(argsDist) > 2 else "0")
+ prevLoc = argsDist[0] if len(argsDist) > 1 else "A1" if argsDist else ""
+ if c and (firstTarget := c.get_combatant(prevLoc)):
+  if (note := firstTarget.note) and 'Location: ' in note:
+   note=note.split(" | ")
+   note={x[0].lower():x[1] for x in [item.split(": ") for item in note]}
+   prevLoc = note['location']
+   height -= int(note.get('height', "0"))
+   fName = firstTarget.name + " "
+  else:
+   prevLoc = None
+ newLoc = argsDist[1] if len(argsDist) > 1 else argsDist[0] if argsDist else ""
+ if c and (secondTarget := c.get_combatant(newLoc)):
+  if (note := secondTarget.note) and 'Location: ' in note:
+   note=note.split(" | ")
+   note={x[0].lower():x[1] for x in [item.split(": ") for item in note]}
+   newLoc = note['location']
+   height += int(note.get('height', "0"))
+   sName = secondTarget.name + " "
+   if sName and len(argsDist) == 1:
+    firstTarget = c.me or c.current
+    if (note := firstTarget.note) and 'Location: ' in note:
+     note=note.split(" | ")
+     note={x[0].lower():x[1] for x in [item.split(": ") for item in note]}
+     prevLoc = note['location']
+     height -= int(note.get('height', "0"))
+     fName = firstTarget.name + " "
+  else:
+   newLoc = None
+ height = height//5
+ if prevLoc and newLoc and argsDist:
+  prevLocX = ''.join(x.upper() for x in prevLoc if x.isalpha()) or 'A'
+  prevLocY = ''.join(y for y in prevLoc if y.isdigit())
+  prevLocY = int(prevLocY or 0)
+  newLocX = ''.join(x.upper() for x in newLoc if x.isalpha())or 'A'
+  newLocY = int(''.join(y for y in newLoc if y.isdigit()) or 0)
+  deltaX, deltaY = alph.index(newLocX)-alph.index(prevLocX), -1*(int(newLocY)-int(prevLocY))
+  distanceT = int(round(sqrt((deltaX*deltaX)+(deltaY*deltaY)),0))*5
+  absDeltaX, absDeltaY = deltaX if deltaX>=0 else deltaX*-1,deltaY if deltaY>=0 else deltaY*-1
+  distance = max(absDeltaX, absDeltaY, height)*5
+  distanceT = round(sqrt((deltaX*deltaX)+(deltaY*deltaY)),2)
+  distanceT = (round(sqrt((distanceT*distanceT) + (height*height)),2))*5 if height else distanceT*5
+  quad=0 if deltaX>=0 and deltaY>=0 else 1 if deltaX>=0 and deltaY<=0 else 2 if deltaX<=0 and deltaY<=0 else 3
+  if deltaY and deltaX:
+    degree = ([i[0] for i in tan if i[1]>=(absDeltaX)/(absDeltaY)][0])
+    degree = (180 - degree) if quad == 1 else (180 + degree) if quad == 2 else (360 - degree) if quad == 3 else degree
+  else:
+    degree = 0 if deltaY > 0 else 180 if deltaY < 0 else 90 if deltaX > 0 else 270
+  card = cardinal[floor((degree)//22.5)%16]
+  colr = (args.last('color', out[targ.name].get('color','p')) + " ").strip("#~").lower()
+  colr = colr[:colr.index(" ")]
+  if len(colr) in (3, 6) and not colr.strip("abcdef1234567890"):
+   colr = f"~{colr}"
+  # Add the line to the overlay list
+  if fName and sName != "":
+   overlays.append(f"*a{distance}{colr}{prevLocX}{prevLocY}{newLocX}{newLocY}")
+  elif fName != "" and sName == "":
+   overlays.append(f"*a{distance}{colr}{prevLocX}{prevLocY}{newLocX}{newLocY}")
+   overlays.append(f"*s5{colr}{newLocX}{newLocY}")
+  elif fName == "" and sName != "":
+   overlays.append(f"*a{distance}{colr}{prevLocX}{prevLocY}{newLocX}{newLocY}")
+   overlays.append(f"*s5{colr}{prevLocX}{prevLocY}")
+  else:
+   overlays.append(f"*a{distance}{colr}{prevLocX}{prevLocY}{newLocX}{newLocY}")
+   overlays.append(f"*s5{colr}{prevLocX}{prevLocY}")
+   overlays.append(f"*s5{colr}{newLocX}{newLocY}")
+  if height == 0:
+   desc.append(f"{get('fName')}({alph[alph.index(prevLocX)].upper()}{prevLocY}) -> {get('sName')}({alph[alph.index(newLocX)].upper()}{newLocY}) | {~{distanceT} if get('trueDistance') else distance} ft. {card} (~{degree}°)")
+  else:
+   desc.append(f"{get('fName')}({alph[alph.index(prevLocX)].upper()}{prevLocY}) -> {get('sName')}({alph[alph.index(newLocX)].upper()}{newLocY}) (Height: {height*5} ft. {'up' if height>0 else 'down' if height else ''}) | {~{distanceT} if get('trueDistance') else distance} ft. {card} (~{degree}°)")
+</drac2>
