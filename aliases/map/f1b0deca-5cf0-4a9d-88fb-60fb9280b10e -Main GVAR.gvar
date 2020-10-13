@@ -1,46 +1,51 @@
 tembed
 <drac2>
-# These are replaced with proper values from the base alias
-args, defaults = argparse("@@@"),"&&&"
+testVersion = True
+args = "@@@"
+# args = "@@@" if typeof("@@@") == "SafeList" else &ARGS&
+defaults = "&&&" if typeof("&&&") == "SafeDict" else None
+
+# Comment the first line for `!map`, second line for `!move`
+# args = argparse((['-t',combat().me.name if combat().me else combat().current.name] if combat() and (combat().me or combat().current) else []) + ['-move']+args if args else [])
+args = argparse(args)
+
 # Set are base variables
-if typeof(defaults) == "str":
- defaults = {}
+defaults = load_json(get_svar("mapDefaults") or "{}") or {}
 mapsize = defaults.get("size", "10x10") or "10x10"
 maxSize = 99
-mapSplitX, mapSplitY = mapsize.lower().split('x')
-mapX = max(min(int(mapSplitX) if mapSplitX.isdigit() else 1, maxSize), 1)
-mapY = max(min(int(mapSplitY) if mapSplitY.isdigit() else 1, maxSize), 1)
-mapsize = f"{mapX}x{mapY}"
+#If user hasn't set mapsize = "JSON" then continue
+if mapsize != "JSON":
+ mapSplitX, mapSplitY = mapsize.lower().split('x')
+ mapX = max(min(int(mapSplitX) if mapSplitX.isdigit() else 1, maxSize), 1)
+ mapY = max(min(int(mapSplitY) if mapSplitY.isdigit() else 1, maxSize), 1)
+ mapsize = f"{mapX}x{mapY}"
 mapoptions = defaults.get("options","")
 mapbg = defaults.get("background","")
-mapinfo = ""
+mapinfo = {}
 mapview = ""
 mapviewsize = ""
 mapviewlocation = ""
 mapattach = ""
-loadedjson = []
-map = "http://otfbm.io/"
+map="http://otfbm.io/"
 walls = []
 objects = []
-out = {}
+loadedjson = []
+out={}
 baseAlph = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 alph = []
 for index in range(maxSize):
-    letter = ""
-    if index // 26:
-        letter = baseAlph[(index // 26) - 1]
-    letter += baseAlph[index % 26]
-    alph.append(letter)
-fName = sName = ""
-cardinal = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW","W", "WNW", "NW", "NNW"]
-tan = [[0,0.0000],[1,0.0175],[2,0.0349],[3,0.0524],[4,0.0699],[5,0.0875],[6,0.1051],[7,0.1228],[8,0.1405],[9,0.1584],[10,0.1763],[11,0.1944],[12,0.2126],[13,0.2309],[14,0.2493],[15,0.2679],[16,0.2867],[17,0.3057],[18,0.3249],[19,0.3443],[20,0.3640],[21,0.3839],[22,0.4040],[23,0.4245],[24,0.4452],[25,0.4663],[26,0.4877],[27,0.5095],[28,0.5317],[29,0.5543],[30,0.5774],[31,0.6009],[32,0.6249],[33,0.6494],[34,0.6745],[35,0.7002],[36,0.7265],[37,0.7536],[38,0.7813],[39,0.8098],[40,0.8391],[41,0.8693],[42,0.9004],[43,0.9325],[44,0.9657],[45,1.0000],[46,1.0355],[47,1.0724],[48,1.1106],[49,1.1504],[50,1.1918],[51,1.2349],[52,1.2799],[53,1.3270],[54,1.3764],[55,1.4281],[56,1.4826],[57,1.5399],[58,1.6003],[59,1.6643],[60,1.7321],[61,1.8040],[62,1.8807],[63,1.9626],[64,2.0503],[65,2.1445],[66,2.2460],[67,2.3559],[68,2.4751],[69,2.6051],[70,2.7475],[71,2.9042],[72,3.0777],[73,3.2709],[74,3.4874],[75,3.7321],[76,4.0108],[77,4.3315],[78,4.7046],[79,5.1446],[80,5.6713],[81,6.3138],[82,7.1154],[83,8.1443],[84,9.5144],[85,11.4301],[86,14.3007],[87,19.0811],[88,28.6363],[89,57.2900]]
-col,siz = ("w","bk","gy","r","g","b","y","p","c","bn","o","pk"), "TSMLHG"
+  letter = ""
+  if index // 26:
+    letter = baseAlph[(index // 26) - 1]
+  letter += baseAlph[index % 26]
+  alph.append(letter)
+col,siz=("w","bk","gy","r","g","b","y","p","c","bn","o","pk"), "TSMLHG"
 COL,SIZ = {"w": "white", "bk": "black", "gy": "grey", "r": "red", "g": "green", "b": "blue", "y": "yellow", "p": "purple", "pk": "pink", "c": "cyan", "bn": "brown", "o": "orange"},{"T":"Tiny", "S":"Small", "M":"Medium", "L":"Large", "H":"Huge", "G":"Gargantuan"}
 presetObjects = {"Trap": "$T", "Pillar Round": "$P", "Pillar Square": "$p", "Statue": "$S", "Open Pit": "$O", "Covered Pit": "$o"}
-overlays = []
+overlays=[]
 c = combat()
 gt = c.get_combatant if c else None
-debug = ""
+debug = []
 desc = []
 finalMap = ""
 sizeOffset = {"T":0, "S":0, "M":0, "L":1, "H":1, "G":2}
@@ -68,12 +73,14 @@ defaultSpells = load_json(get_gvar("d456fdfa-a292-42a1-ab00-b884e79b702f"))
 spellOverlays = defaultSpells.copy()
 # Grab the user selected spells, and update the main dict
 # This allows the user to replace/update items in the original dict
-userOverlays = load_json(get('mapOverlays','{}'))
+userOverlays    = load_json(get('mapOverlays','{}'))
+serverOverlays = load_json(get_svar('mapOverlays') or '{}')
+spellOverlays.update(serverOverlays)
 if typeof(userOverlays) == 'SafeDict':
-    spellOverlays.update(userOverlays)
+ spellOverlays.update(userOverlays)
 else:
-    [spellOverlays.update(load_json(get_gvar(spells))) for spells in load_json(get('mapOverlays','{}')) if get_gvar(spells)]
-# Iterate over the spell dict, making it a little easier to read.
+ [spellOverlays.update(load_json(get_gvar(spells))) for spells in load_json(get('mapOverlays','{}')) if get_gvar(spells)]
+ # Iterate over the spell dict, making it a little easier to read.
 # Only select the ones they are searching for, if they are searching
 spelllist = []
 for spell, over in spellOverlays.items():
@@ -95,10 +102,14 @@ for spell, over in spellOverlays.items():
 spellPagin = [spelllist[i:i+20] for i in range(0, len(spelllist), 20)]
 # Do we have a -spell#?
 </drac2>
+
 <drac2> # L318
+serverPresets=load_json(get_svar('mapPresets') or '{}')
+userPresets=load_json(get('mapPresets', '{}'))
+serverPresets.update(userPresets)
+userPresets = serverPresets
 #This allows the user to load a preset into -mapview
 if args.last('viewload') or args.last('loadview'):
- userPresets=load_json(get('mapPresets', '{}'))
  argsViewload = (args.last("viewload") or args.last('loadview')).lower()
  for searchViewload in userPresets:
   if argsViewload in searchViewload.lower():
@@ -107,8 +118,9 @@ if args.last('viewload') or args.last('loadview'):
    desc.append(f"Loaded view `{searchViewload}`.")
    break
 </drac2>
+
 <drac2>
-for overNum in [""]+[str(x) for x in range(1, 11)]:
+for overNum in [""]+[str(x) for x in range(1,11)]:
  if args.last('spell' + overNum):
   # Loop through our users spellOverlays, looking for that spell
   for spell in spellOverlays:
@@ -127,14 +139,16 @@ for overNum in [""]+[str(x) for x in range(1, 11)]:
 
 <drac2>
 # Pulling up tokenlist to view all created tokens
+serverTokens = load_json(get_svar('mapTokens') or '{}')
 userTokens = load_json(get('mapTokens','{}'))
+serverTokens.update(userTokens)
+userTokens = serverTokens
 tokenlist = [f"""**{tokens}** - `{str(over).replace('"',quote)}`""" for tokens, over in userTokens.items() if args.last('search','').lower() in tokens.lower()]
 tokenPagin = [tokenlist[i:i+20] for i in range(0, len(tokenlist), 20)]
 </drac2>
 
 <drac2>
 # Pulling up viewlist to view all created -mapview presets
-userPresets = load_json(get('mapPresets','{}'))
 # Only select the ones they are searching for, if they are searching
 viewlist = [f"""**{presets}** - `{str(over).replace('"',quote)}`""" for presets, over in userPresets.items() if args.last('search','').lower() in presets.lower()]
 # Split the list into groups of 20, to ensure it stays a reasonable size
@@ -143,17 +157,20 @@ presetPagin = [viewlist[i:i+20] for i in range(0, len(viewlist), 20)]
 
 <drac2>
 #Pulling up battlelist to view all created battles
+serverBattles = load_json(get_svar('mapBattles') or '{}')
 userBattles = load_json(get('mapBattles', "{}"))
+serverBattles.update(userBattles)
+userBattles = serverBattles
 battlelist = []
-for battles, info in userBattles.items():
- if args.last('search', '').lower() in battles.lower():
+for battle, info in userBattles.items():
+ if args.last('search', '').lower() in battle.lower():
   indivBattles = dict(list(info.items())[1:])
   indivCombatant = []
   for combatant in indivBattles:
    if combatant != "mapattach":
     overs = len([i for i in indivBattles[combatant] if i.startswith('overlay')])
-    indivCombatant.append(f"""{combatant}{f" ({overs} Overlay{'s' if overs>1 else ''})" if overs else ""}""")
-  battlelist.append(f"""**{battles.title()}** - Combatants: {', '.join(indivCombatant)}""".strip(",- "))
+    indivCombatant.append(f"""`{combatant}`{f" ({overs} Overlay{'s' if overs>1 else ''})" if overs else ""}""")
+  battlelist.append(f"""**{battle}** - Combatants: {', '.join(indivCombatant)}""".strip(",- "))
 # Split the list into groups of 15, to ensure it stays a reasonable size (used to be 20, then I added stuff)
 battlePagin = [battlelist[i:i+15] for i in range(0, len(battlelist), 15)]
 </drac2>
@@ -179,216 +196,36 @@ if c:
   mapinfo=mapinfo.split(' ~ ')
   mapinfo={x[0].lower():x[1] for x in [item.split(': ') for item in mapinfo]}
   mapsize=mapinfo.get('size')
-  if ":" in mapsize:
-    mapLocSize = mapsize.split( ':')
-    mapviewlocation = f"{mapLocSize[0]}:"
-    mapsize = mapviewsize = mapLocSize[1]
-  if mapsize[0].isdigit():
-   mapSplitX, mapSplitY = mapsize.lower().split('x')
-   mapX = min(int(mapSplitX) if mapSplitX.isdigit() else 1, maxSize)
-   mapY = min(int(mapSplitY) if mapSplitY.isdigit() else 1, maxSize)
-  else:
-   mapX = alph.index(''.join(x.upper() for x in mapsize if x.isalpha()))
-   mapY = int(''.join(y for y in mapsize if y.isdigit()))
-  mapsize = f"{mapX}x{mapY}"
+  #If user hasn't set mapsize = "JSON" then continue
+  if mapsize != "JSON":
+   if ":" in mapsize:
+     mapLocSize = mapsize.split(':')
+     mapviewlocation = f"{mapLocSize[0]}:"
+     mapsize = mapviewsize = mapLocSize[1]
+   if mapsize[0].isdigit():
+    mapSplitX, mapSplitY = mapsize.lower().split('x')
+    mapX = min(int(mapSplitX) if mapSplitX.isdigit() else 1, maxSize)
+    mapY = min(int(mapSplitY) if mapSplitY.isdigit() else 1, maxSize)
+   else:
+    mapX = alph.index(''.join(x.upper() for x in mapsize if x.isalpha()))
+    mapY = int(''.join(y for y in mapsize if y.isdigit()))
+   mapsize = f"{mapX}x{mapY}"
   mapbg=mapinfo.get('background')
   mapoptions=mapinfo.get('options')
   walls = mapinfo.get('walls')
   walls = walls.split(', ') if walls else []
   objects = mapinfo.get('objects')
   objects = objects.split('/') if objects else []
-  loadedjson=mapinfo.get('json')
+  loadedjson = mapinfo.get('json')
   loadedjson = loadedjson.split(', ') if loadedjson else []
   if mapinfo.get('view'):
    mapviewlocation, mapviewsize = mapinfo.get('view').replace('::',':').split(':')
 </drac2>
-<drac2>
-if c:
- # If theres a -mapsize, -mapbg, -mapoptions, -mapview, or -mapattach arg, process that and add/replace the effect
- if any(args.last(thisArg) for thisArg in ('mapsize', 'mapbg', 'bg', 'mapoptions', 'options', 'mapview', 'view', 'mapattach', 'attach', 'wall', 'deletewall', 'object', 'deleteobject', 'loadmap', 'loadjson', 'deletejson')):
-  # If the new mapsize is different from the old one, update and display
-  if mapsize != args.last('mapsize', mapsize):
-   mapSplitX, mapSplitY = args.last('mapsize', mapsize).lower().split('x')
-   mapSplitX = min(int(mapSplitX) if mapSplitX.isdigit() else 1, maxSize)
-   mapSplitY = min(int(mapSplitY) if mapSplitY.isdigit() else 1, maxSize)
-   mapsize = f"{mapSplitX}x{mapSplitY}"
-   desc.append(f"Map size changed to `{mapsize}`")
-  # If the new mapbg is different from the old one, update and display
-  if mapbg != args.last('mapbg', args.last('bg', mapbg)):
-   if args.last('mapbg', args.last('bg')) in ('none', 'None', 'reset'):
-    mapbg = ""
-    desc.append(f"Map background removed")
-   else:
-    mapbg = args.last('mapbg', args.last('bg', mapbg))
-    desc.append(f"Map background changed to `{mapbg}`")
-  if loadedjson != args.last('loadjson', loadedjson):
-    if args.last('loadjson') in ('none', 'None', 'reset'):
-      loadedjson = []
-      desc.append(f"JSON file removed")
-    else:
-      inputtedJson = args.last('loadjson')
-      loadedjson.append(inputtedJson)
-      desc.append(f"Loaded JSON File")
-  if args.last('deletejson'):
-    inputtedjson = args.last('deletejson')
-    remjson = [json for json in loadedjson if inputtedjson.lower() != json.lower()]
-    if len(loadedjson) != len(remjson):
-      desc.append(f"JSON removed: `{inputtedjson}`")
-      loadedjson = remjson
-    else:
-      desc.append(f"Could not find JSON: `{inputtedjson}`")
-  if mapoptions != args.last('mapoptions', args.last('options', mapoptions)):
-   #If the new mapoptions are different from the old ones, update and display
-   if args.last('mapoptions', args.last('options')) in ('none', 'None', True, 'true', 'True', None):
-    mapoptions = ""
-    desc.append(f"Map options reset")
-   else:
-    mapoptions = args.last('mapoptions', args.last('options', mapoptions))
-    desc.append(f"Map options changed to `{mapoptions}`")
-    if mapoptions[0].isdigit():
-     zoom = ""
-     for char in mapoptions:
-      if char.isdigit() or char == ".":
-       zoom += char
-      else:
-       break
-     desc.append(f" - Zoom set to {zoom}x")
-    if 'd' in mapoptions:
-     desc.append(f" - Dark Mode")
-    if 'n' in mapoptions:
-     desc.append(f" - Grid Hidden")
-    if 'e' in mapoptions:
-     desc.append(f" - Disable Border Opacity")
-    if 'f' in mapoptions:
-     desc.append(f" - Using alternative grid/token font")
-    if 'c' in mapoptions:
-     gsize = ""
-     for char in mapoptions[mapoptions.index('c')+1:]:
-      if char.isdigit():
-       gsize += char
-      else:
-       break
-     desc.append(f" - Grid size adjusted to {gsize} px")
-    if 'h' in mapoptions:
-     gtrans = ""
-     for char in mapoptions[mapoptions.index('h')+1:]:
-      if char.isdigit():
-       gtrans += char
-      else:
-       break
-     desc.append(f" - Grid transparancy adjusted to {gtrans}%")
-    if 'o' in mapoptions:
-     offset = ""
-     for char in mapoptions[mapoptions.index('o')+1:]:
-      if char.isdigit() or char == ":":
-       offset += char
-      else:
-       break
-     desc.append(f" - Background Offset adjusted by {offset.replace(':', 'x')} px")
-  if mapview != args.last('mapview', args.last('view', mapview)):
-   # Do they want to reset the map view?
-   if args.last('mapview', args.last('view')).lower() in ('reset', 'none'):
-    mapviewlocation = mapviewsize = ""
-    desc.append(f"""Map view reset to default `{mapsize}`.""")
-   else:
-    # If the new mapview are different from the old one, update and display
-    mapview = args.last('mapview', args.last('view', mapview))
-    mapviewlocation = mapview.split(':')[0]
-    mapviewsize = mapview.split(':')[1]
-    if mapviewsize[0].isdigit():
-     mapSplitX, mapSplitY = mapviewsize.lower().split('x')
-     mapX = min(int(mapSplitX) if mapSplitX.isdigit() else 1, maxSize)
-     mapY = min(int(mapSplitY) if mapSplitY.isdigit() else 1, maxSize)
-    else:
-     locX = alph.index(''.join(x.upper() for x in mapviewlocation if x.isalpha()))
-     locY = int(''.join(y for y in mapviewlocation if y.isdigit()))
-     mapX = alph.index(''.join(x.upper() for x in mapviewsize if x.isalpha()))
-     mapY = int(''.join(y for y in mapviewsize if y.isdigit()))
-     mapX = mapX - locX + 1
-     mapY = mapY - locY + 1
-    mapviewsize = f"{mapX}x{mapY}"
-    desc.append(f"Map view changed to `{mapview if f'{mapviewlocation}:{mapsize}'==mapview else f'{mapview} ({mapviewsize})'}`")
-  #If there is a -wall
-  if args.last('wall'):
-   if args.last('wall') in ('none', 'None', True, 'true', 'True'):
-    walls = []
-    desc.append(f"Walls reset.")
-   else:
-    inputtedWalls = args.last('wall')
-    walls.append(inputtedWalls)
-    desc.append(f"Wall added: `{inputtedWalls}`")
-  if args.last('deletewall'):
-   inputtedWalls = args.last('deletewall')
-   remWalls = [wall for wall in walls if inputtedWalls.lower() != wall.lower()]
-   if len(walls) != len(remWalls):
-    desc.append(f"Wall removed: `{inputtedWalls}`")
-    walls = remWalls
-   else:
-    desc.append(f"Could not find wall: `{inputtedWalls}`")
-  #If there is a -object call
-  if args.last('object'):
-   if args.last('object') in ('none', 'None', True, 'true', 'True'):
-    objects = []
-    desc.append(f"Objects reset")
-   else:
-    foundObject = ""
-    argsObject = args.last("object").lower().split(":")
-    for object in presetObjects:
-     if argsObject[1] in object.lower():
-      foundObject = presetObjects[object]
-      break
-    if foundObject:
-     objectLocation = argsObject[0]
-     loadedObject=objectLocation+foundObject
-     objects.append(loadedObject)
-     desc.append(f"Object added `{object}:{loadedObject}`")
-    else:
-     desc.append("Could not find object")
-  if args.last('deleteobject'):
-   foundObject = "There is no object by that name"
-   argsObject = args.last("deleteobject").lower().split(":")
-   for object in presetObjects:
-    if argsObject[1] in object.lower():
-     foundObject = presetObjects[object]
-     break
-   objectLocation = argsObject[0]
-   loadedObject=objectLocation+foundObject
-   objects.remove(loadedObject)
-   desc.append(f"Object `{object}:{loadedObject}` was removed")
-  # If there is a -mapattach, and its a valid target in init
-  if args.last('mapattach', args.last('attach')) and gt(args.last('mapattach', args.last('attach'))):
-   # First check if there is an existing mapattach, and if its the same as the new one, then remove their map effect
-   if typeof(mapattach)=="SimpleCombatant" and gt(args.last('mapattach', args.last('attach'))).name != mapattach.name:
-    mapattach.remove_effect('map')
-   # Then, set the new mapattach
-   mapattach = gt(args.last('mapattach', args.last('attach')))
-  # If theres mapattach set, and they currently have a map effect, remove it
-  if mapattach and mapattach.get_effect('map'):
-   mapattach.remove_effect('map')
-  # Format everything appropriately
-  setMapView = f"{mapviewlocation}:{mapviewsize}"
-  neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ View: {setMapView}" if setMapView.strip(':') else ''}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f" ~ Walls: {', '.join(walls)}" if walls else""}{f' ~ Objects: {"/".join(objects)}' if objects else ""}{f' ~ JSON: {", ".join(loadedjson)}' if loadedjson else ""}""".strip(" ~")
-  # If mapattach exists, apply the new effect, and display
-  if mapattach:
-   mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
-   desc.append(f"Map settings attached to `{mapattach.name}`")
-  # Otherwise, show that it was changed, but not saved
-  else:
-   # Look for a combatant named DM or Map, auto attach
-   for maptarg in ("map", "dm", "lair"):
-     if c.get_combatant(maptarg):
-       mapattach = c.get_combatant(maptarg)
-       mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
-       desc.append(f"""Autoattached map settings to {mapattach.name}""")
-       break
-   else:
-    desc.append("Map settings changed, but no map attach target was found. Settings not saved.")
-</drac2>
+
 <drac2>
 #This allows the user to save -mapview presets to their mapPresets uvar to be called using -loadview
 if args.last('newview') or args.last('saveview') or args.last('deleteview'):
   #First option is to create the preset
-  userPresets=load_json(get("mapPresets", "{}"))
   if args.last('newview') or args.last('saveview'):
    for addNewview in (args.get('newview') or args.get('saveview')):
     if "," in addNewview:
@@ -399,10 +236,16 @@ if args.last('newview') or args.last('saveview') or args.last('deleteview'):
    desc.append(f"Created the mapview preset `{addNewview.split(',')[0]}`")
   #Here we can remove an already created preset
   if args.last('deleteview'):
-   for searchDeleteView in args.get('deleteview'):
-    userPresets.pop(searchDeleteView)
-   set_uvar("mapPresets",dump_json(userPresets))
-   desc.append(f"Removed Preset `{searchDeleteView}`")
+   inputtedview = args.last('deleteview')
+   foundView = None
+   for view in userPresets:
+    if inputtedview in view.lower():
+     foundView = userPresets.pop(view)
+     set_uvar("mapPresets", dump_json(userPresets))
+     desc.append(f"Deleted the view preset: `{inputtedview}`")
+     break
+    else:
+     desc.append(f"Could not find preset: `{inputtedview}`")
 </drac2>
 
 <drac2>
@@ -410,8 +253,10 @@ if args.last('newview') or args.last('saveview') or args.last('deleteview'):
 presetMaps = load_json(get_gvar("a891401d-cdf2-44b2-b63b-bd86387c2659"))
 mapBG = presetMaps.copy()
 userMaps = load_json(get('mapBackgrounds','{}'))
+serverMaps = load_json(get_svar('mapBackgrounds') or '{}')
 # Grab the user selected map, and update the main dict
 # This allows the user to replace/update items in the original dict
+mapBG.update(serverMaps)
 mapBG.update(userMaps)
 # Iterate over the map dict, making it a little easier to read.
 # Only select the ones they are searching for, if they are searching
@@ -424,7 +269,10 @@ for maps, info in mapBG.items():
   elif typeof(info) == 'str':
    info = {"walls": info}
   if info.get('mapbg'):
-   infoDesc.append(f"Background ([Link]({info.get('mapbg')}))")
+   if len(info.get('mapbg')) > 200:
+    infoDesc.append(f"Background (Long URL)")
+   else:
+    infoDesc.append(f"Background ([Link]({info.get('mapbg')}))")
   if info.get('mapsize'):
    infoDesc.append(f"{info.get('mapsize')}")
   if info.get('mapoptions'):
@@ -467,6 +315,7 @@ if args.last('mapload') or args.last('loadmap'):
     objects = foundMap.get('objects')
    else:
     objects = []
+   loadedjson = []
    if typeof(foundMap) == 'SafeList':
     mapbg = foundMap[0]
     mapsize = foundMap[1] if len(foundMap)>1 else ""
@@ -535,7 +384,6 @@ if args.last('mapload') or args.last('loadmap'):
 #This allows the user to create custom mapbg presets and save them to their mapBackgrounds uvar to be loaded using -mapload
 if args.last('newmapbg') or args.last('deletemapbg') or args.last('savemap') or args.last('deletemap'):
  #First option is to create mapbg preset
- userMaps = load_json(get('mapBackgrounds','{}'))
  if args.last('newmapbg') or args.last('savemap'):
   mapName = (args.last('savemap') or args.last('newmapbg')).lower()
   mapBGState = {}
@@ -564,6 +412,7 @@ if args.last('newmapbg') or args.last('deletemapbg') or args.last('savemap') or 
   set_uvar("mapBackgrounds",dump_json(userMaps))
   desc.append(f"Removed Map BG `{argDeletemap}`")
 </drac2>
+
 <drac2>
 #Here we allow the user to save spell overlays in their mapOverlays uvar
 if any(args.last(potentialArg) for potentialArg in ('newspell', 'saveoverlay', 'savespell', 'deletespell', 'deleteoverlay')):
@@ -611,6 +460,17 @@ if c:
       _ = out[target.name].pop('overlay'+overNum) if 'overlay'+overNum in out[target.name] else None
       desc.append(f"""Overlay {overNum} removed from `{target.name}` because effect `{checkEffect}` no longer present{f" on {checkEffectTarget}" if checkEffectTarget!=target.name else ""}.""")
       desc.append("")
+    # # If the overlay was -aim'd at a target, and if that aim target exists still
+    # if out[target.name].get('aim'+overNum):
+    #  aimTarget = out[target.name].get('aim'+overNum)
+    #  aimTargetX = ''.join([i for i in aimTarget if i.isalpha()])
+    #  aimTargetY = int(''.join([i for i in aimTarget if i.isdigit()]) or -1)
+    #  if not (aimTargetX.upper() in alph[:mapX+2] and 0 < aimTargetY <= mapY and not gt(aimTarget)):
+    #   _ = out[target.name].pop('effect'+overNum) if 'effect'+overNum in out[target.name] else None
+    #   _ = out[target.name].pop('aim'+overNum) if 'aim'+overNum in out[target.name] else None
+    #   _ = out[target.name].pop('overlay'+overNum) if 'overlay'+overNum in out[target.name] else None
+    #   desc.append(f"""Overlay {overNum} removed from `{target.name}` because aim target `{aimTarget}` no longer present.""")
+    #   desc.append("")
   elif target.note:
     note=target.note
     desc.append(f"Found a incorrectly formatted note on {target.name}, reformatted as a `-note`. ")
@@ -661,6 +521,7 @@ if c:
     # Display the change in size
     desc.append(f"Resetting size of {targ.name} to Medium (M)")
 </drac2>
+
 <drac2>
 if c:
  # If there is a -t argument given, and that target exists as a combatant, modify that target
@@ -783,7 +644,7 @@ if c:
       # Add the line to the overlay list
       overlays.append(f"*a{distanceT}{colr}{prevLocX}{prevLocY}{newLocX}{newLocY}")
       # Display the change in location
-      desc.insert(0, f"Moving {targ.name} from {prevLoc} to {args.last('move').upper()} ({f'~{distanceT}' if get('trueDistance') else distance} ft.).")
+      desc.insert(0, f"Moving {targ.name} from {prevLoc} to {args.last('move').upper()} ({f'~{distanceT}' if get_svar('trueDistance') or get('trueDistance') else distance} ft.).")
    else:
     # Display the change in location
     desc.insert(0, f"Moving {targ.name} to {args.last('move').upper()}.")
@@ -938,82 +799,6 @@ if c:
 </drac2>
 
 <drac2>
-if args.last('distance'):
- argsDist = args.last('distance').split(':')
- height = int(argsDist[2] if len(argsDist) > 2 else "0")
- prevLoc = argsDist[0] if len(argsDist) > 1 else "A1" if argsDist else ""
- if c and (firstTarget := c.get_combatant(prevLoc)):
-  if (note := firstTarget.note) and 'Location: ' in note:
-   note=note.split(" | ")
-   note={x[0].lower():x[1] for x in [item.split(": ") for item in note]}
-   prevLoc = note['location']
-   height -= int(note.get('height', "0"))
-   fName = firstTarget.name + " "
-  else:
-   prevLoc = None
- newLoc = argsDist[1] if len(argsDist) > 1 else argsDist[0] if argsDist else ""
- if c and (secondTarget := c.get_combatant(newLoc)):
-  if (note := secondTarget.note) and 'Location: ' in note:
-   note=note.split(" | ")
-   note={x[0].lower():x[1] for x in [item.split(": ") for item in note]}
-   newLoc = note['location']
-   height += int(note.get('height', "0"))
-   sName = secondTarget.name + " "
-   if sName and len(argsDist) == 1:
-    firstTarget = c.me or c.current
-    if (note := firstTarget.note) and 'Location: ' in note:
-     note=note.split(" | ")
-     note={x[0].lower():x[1] for x in [item.split(": ") for item in note]}
-     prevLoc = note['location']
-     height -= int(note.get('height', "0"))
-     fName = firstTarget.name + " "
-  else:
-   newLoc = None
- height = height//5
- if prevLoc and newLoc and argsDist:
-  prevLocX = ''.join(x.upper() for x in prevLoc if x.isalpha()) or 'A'
-  prevLocY = ''.join(y for y in prevLoc if y.isdigit())
-  prevLocY = int(prevLocY or 0)
-  newLocX = ''.join(x.upper() for x in newLoc if x.isalpha())or 'A'
-  newLocY = int(''.join(y for y in newLoc if y.isdigit()) or 0)
-  deltaX, deltaY = alph.index(newLocX)-alph.index(prevLocX), -1*(int(newLocY)-int(prevLocY))
-  distanceT = int(round(sqrt((deltaX*deltaX)+(deltaY*deltaY)),0))*5
-  absDeltaX, absDeltaY = deltaX if deltaX>=0 else deltaX*-1,deltaY if deltaY>=0 else deltaY*-1
-  distance = max(absDeltaX, absDeltaY, height)*5
-  distanceT = round(sqrt((deltaX*deltaX)+(deltaY*deltaY)),2)
-  distanceT = (round(sqrt((distanceT*distanceT) + (height*height)),2))*5 if height else distanceT*5
-  quad=0 if deltaX>=0 and deltaY>=0 else 1 if deltaX>=0 and deltaY<=0 else 2 if deltaX<=0 and deltaY<=0 else 3
-  if deltaY and deltaX:
-    degree = ([i[0] for i in tan if i[1]>=(absDeltaX)/(absDeltaY)][0])
-    degree = (180 - degree) if quad == 1 else (180 + degree) if quad == 2 else (360 - degree) if quad == 3 else degree
-  else:
-    degree = 0 if deltaY > 0 else 180 if deltaY < 0 else 90 if deltaX > 0 else 270
-  card = cardinal[floor((degree)//22.5)%16]
-  if targ.name !=
-  colr = ((out[targ.name].get('color','p')) + " ").strip("#~").lower()
-  colr = colr[:colr.index(" ")]
-  if len(colr) in (3, 6) and not colr.strip("abcdef1234567890"):
-   colr = f"~{colr}"
-  # Add the line to the overlay list
-  if fName and sName != "":
-   overlays.append(f"*a{distance}{colr}{prevLocX}{prevLocY}{newLocX}{newLocY}")
-  elif fName != "" and sName == "":
-   overlays.append(f"*a{distance}{colr}{prevLocX}{prevLocY}{newLocX}{newLocY}")
-   overlays.append(f"*s5{colr}{newLocX}{newLocY}")
-  elif fName == "" and sName != "":
-   overlays.append(f"*a{distance}{colr}{prevLocX}{prevLocY}{newLocX}{newLocY}")
-   overlays.append(f"*s5{colr}{prevLocX}{prevLocY}")
-  else:
-   overlays.append(f"*a{distance}{colr}{prevLocX}{prevLocY}{newLocX}{newLocY}")
-   overlays.append(f"*s5{colr}{prevLocX}{prevLocY}")
-   overlays.append(f"*s5{colr}{newLocX}{newLocY}")
-  if height == 0:
-   desc.append(f"{get('fName')}({alph[alph.index(prevLocX)].upper()}{prevLocY}) -> {get('sName')}({alph[alph.index(newLocX)].upper()}{newLocY}) | {~{distanceT} if get('trueDistance') else distance} ft. {card} (~{degree}°)")
-  else:
-   desc.append(f"{get('fName')}({alph[alph.index(prevLocX)].upper()}{prevLocY}) -> {get('sName')}({alph[alph.index(newLocX)].upper()}{newLocY}) (Height: {height*5} ft. {'up' if height>0 else 'down' if height else ''}) | {~{distanceT} if get('trueDistance') else distance} ft. {card} (~{degree}°)")
-</drac2>
-
-<drac2>
 if c:
  for aimNum in [""]+[str(x) for x in range(1,11)]:
   # Is the user trying to change a -aim?
@@ -1075,14 +860,13 @@ if c:
      desc.append(f"{info.title()}: `{mapinfo[info]}`")
     if info == "options":
      options = mapinfo[info]
-     if options[0].isdigit():
+     if 'z' in options or options[0].isdigit():
       zoom = ""
-      for char in options:
-       if char.isdigit() or char == ".":
-        zoom += char
-       else:
-        break
-      desc.append(f" - Zoom set to {zoom}x")
+      if 'z' in options:
+       zoom = ",".join([char for char in options.split('z')[1][0:3] if char.isdigit() or char == "."]).replace(",", "")
+      else:
+       zoom = ",".join([char for char in options[0:3] if char.isdigit() or char == "."]).replace(",", "")
+      desc.append(f' - Zoom set to {zoom}x')
      if 'd' in options:
       desc.append(f" - Dark Mode")
      if 'n' in options:
@@ -1093,27 +877,15 @@ if c:
       desc.append(f" - Using alternative grid/token font")
      if 'c' in options:
       gsize = ""
-      for char in options[options.index('c')+1:]:
-       if char.isdigit():
-        gsize += char
-       else:
-        break
-      desc.append(f" - Grid size adjusted to {gsize} px")
+      gsize = ",".join([char for char in options.split("c")[1][0:2] if char.isdigit()]).replace(",", "")
+      desc.append(f' - Grid size adjusted to {gsize} px')
      if 'h' in options:
       gtrans = ""
-      for char in options[options.index('h')+1:]:
-       if char.isdigit():
-        gtrans += char
-       else:
-        break
-      desc.append(f" - Grid transparancy adjusted to {gtrans}%")
+      gtrans = ",".join([char for char in options.split("h")[1][0:2] if char.isdigit()]).replace(",", "")
+      desc.append(f' - Grid transparancy adjusted to {gtrans}%')
      if 'o' in options:
       offset = ""
-      for char in options[options.index('o')+1:]:
-       if char.isdigit() or char == ":":
-        offset += char
-       else:
-        break
+      offset = ",".join([char for char in options.split("o")[1][0:5] if char.isdigit() or char == ":"]).replace(",", "")
       desc.append(f" - Background Offset adjusted by {offset.replace(':', 'x')} px")
   desc.append("")
 </drac2>
@@ -1122,7 +894,6 @@ if c:
 #Load user saved token list
 if args.last('savetoken') or args.last('deletetoken'):
  if args.last('savetoken'):
-  userTokens = load_json(get('mapTokens','{}'))
   for addNewToken in args.get('savetoken'):
    if ":" in addNewToken:
     userTokens.update({addNewToken.split(":")[0]:addNewToken.split(":")[1]})
@@ -1131,7 +902,6 @@ if args.last('savetoken') or args.last('deletetoken'):
   set_uvar("mapTokens",dump_json(userTokens).lower())
   desc.append(f"Created the Token `{addNewToken.split(':')[0]}`")
  if args.last('deletetoken'):
-  userTokens = load_json(get('mapTokens','{}'))
   argToken = args.last("deletetoken").lower()
   userTokens.pop(argToken)
   set_uvar("mapTokens",dump_json(userTokens).lower())
@@ -1174,7 +944,7 @@ if c:
        # Add the line to the overlay list
        overlays.append(f"*a{distanceT}{colr}{prevLocX}{prevLocY}{newLocX}{newLocY}")
        # Display the change in location
-       desc.insert(0, f"Moving {mTarg.name} from {prevLoc} to {mMove.upper()} ({f'~{distanceT}' if get('trueDistance') else distance} ft.).")
+       desc.insert(0, f"Moving {mTarg.name} from {prevLoc} to {mMove.upper()} ({f'~{distanceT}' if get_svar('trueDistance') or get('trueDistance') else distance} ft.).")
     else:
      # Display the change in location
      desc.insert(0, f"Moving {mTarg.name} to {mMove.upper()}.")
@@ -1202,20 +972,18 @@ if c:
      desc.append(f"Changing color of {mTarg.name} to #{color.upper()}")
    if mToken:
     token = mToken
-    out[targ.name].update({'token':token})
-    desc.append(f"{targ.name} is now using the shortcode `{token}` as a token.")
-   if args.last('loadtoken') and massTarg:
-    userPresets=load_json(get('mapTokens', '{}'))
+    out[mTarg.name].update({'token':token})
+    desc.append(f"{mTarg.name} is now using the shortcode `{token}` as a token.")
+   if args.last('loadtoken'):
+    foundTokenload = None
     argsTokenload = args.last('loadtoken').lower()
-    for searchTokenload in userPresets:
+    for searchTokenload in userTokens:
      if argsTokenload in searchTokenload.lower():
-      foundTokenload = userPresets.get(searchTokenload)
+      foundTokenload = userTokens.get(searchTokenload)
       desc.append(f"Loaded token `{searchTokenload}`.")
+      out[mTarg.name].update({'token':foundTokenload})
       break
-    out[mTarg.name].update({'token':foundTokenload})
 </drac2>
-
-
 
 <drac2>
 if args.last('tokenimport'):
@@ -1248,71 +1016,278 @@ if args.last('tokenimport'):
 </drac2>
 
 <drac2>
-if args.last('savebattle') or args.last('deletebattle') or args.last('loadbattle'):
- userBattles = load_json(get('mapBattles', "{}"))
- if args.last('savebattle'):
-  argsBattle = args.last('savebattle')
-  mapBGState = {}
-  for key, value in mapinfo.items():
-   if value:
-    if mapinfo.get('background')!= None:
-     mapBGState["mapbg"] = mapinfo.get('background')
-    mapBGState["mapsize"] = mapsize
-    if mapinfo.get('options')!= None:
-     mapBGState["mapoptions"] = mapinfo.get('options')
-    if mapinfo.get('walls')!= None:
-     mapBGState["walls"] = mapinfo.get('walls').split(', ')
-    if mapinfo.get('objects')!= None:
-     mapBGState["objects"] = mapinfo.get('objects').split('/')
-    if mapinfo.get('json')!= None:
-     mapBGState["json"] = mapinfo.get('json').split(', ')
-    break
-  savedBGState = {"mapattach":mapBGState}
-  savedBGState.update(out)
-  savedBattle = {argsBattle:savedBGState}
-  userBattles.update(savedBattle)
-  set_uvar("mapBattles",dump_json(userBattles))
-  desc.append(f"Saved the battle `{argsBattle.title()}`")
- if args.last('deletebattle'):
-  argsBattle = args.last('deletebattle')
-  for searchBattle in userBattles:
-   if argsBattle in searchBattle.lower():
-    userBattles.pop(searchBattle)
-    set_uvar("mapBattles",dump_json(userBattles))
-    desc.append(f"Deleted the battle `{searchBattle.title()}`")
-    break
- if args.last('loadbattle'):
-  argsBattle = args.last('loadbattle')
-  foundBattle = ""
-  for searchBattle in userBattles:
-   if argsBattle in searchBattle.lower():
-    foundBattle = userBattles[searchBattle]
-    for i in foundBattle:
-     if i not in ("mapattach"):
-      foundCombatants = dict(list(foundBattle.items())[1:])
-      if all([combat().get_combatant(i) for i in foundCombatants.keys()]):
-       out = dict(list(foundBattle.items())[1:])
-       foundMapload = foundBattle["mapattach"]
-       if "mapbg" in foundMapload:
-        mapbg = foundMapload["mapbg"]
-       mapsize = foundMapload["mapsize"]
-       if "mapoptions" in foundMapload:
-        mapoptions = foundMapload["mapoptions"]
-       if "walls" in foundMapload:
-        walls = foundMapload["walls"]
-       if "objects" in foundMapload:
-        objects = foundMapload["objects"]
-       if "json" in foundMapload:
-        loadedjson = foundMapload["json"]
-       setMapView = f"{mapviewlocation}:{mapviewsize}"
-       neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ View: {setMapView}" if setMapView.strip(':') else ''}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f" ~ Walls: {', '.join(walls)}" if walls else""}{f' ~ Objects: {"/".join(objects)}' if objects else ""}{f' ~ JSON: {", ".join(loadedjson)}' if loadedjson else ""}""".strip(" ~")
-       if mapattach:
-        mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
-       desc.append(f"Loaded the battle `{argsBattle.title()}`")
-       break
+if c:
+ # If theres a -mapsize, -bg, -options, -view, -attach, -view, -wall, -deletewall, -object, -deleteobject, -loadmap, -savebattle, -deletebattle, -loadbattle, -loadjson or -deletejson  - arg, process that and add/replace the effect
+ if any(args.last(thisArg) for thisArg in ('mapsize', 'mapbg', 'bg', 'mapoptions', 'options', 'mapview', 'view', 'mapattach', 'attach', 'wall', 'deletewall', 'object', 'deleteobject', 'loadmap', 'savebattle', 'deletebattle', 'loadbattle', 'loadjson', 'deletejson')):
+  # If the new mapsize is different from the old one, update and display
+  if mapsize != args.last('mapsize', mapsize):
+   #If user wants to set mapsize back to default
+   if args.last('mapsize') in ('none', 'None', 'reset'):
+    mapsize = defaults.get("size", "10x10") or "10x10"
+   #If user wants to have the mapsize be pulled from a loaded json file
+   elif args.last('mapsize') in ('json'):
+    mapsize = "JSON"
+   else:
+    mapSplitX, mapSplitY = args.last('mapsize', mapsize).lower().split('x')
+    mapSplitX = min(int(mapSplitX) if mapSplitX.isdigit() else 1, maxSize)
+    mapSplitY = min(int(mapSplitY) if mapSplitY.isdigit() else 1, maxSize)
+    mapsize = f"{mapSplitX}x{mapSplitY}"
+   desc.append(f"Map size changed to `{mapsize}`")
+  # If the new mapbg is different from the old one, update and display
+  if mapbg != args.last('mapbg', args.last('bg', mapbg)):
+   if args.last('mapbg', args.last('bg')) in ('none', 'None', 'reset'):
+    mapbg = ""
+    desc.append(f"Map background removed")
+   else:
+    mapbg = args.last('mapbg', args.last('bg', mapbg))
+    desc.append(f"Map background changed to `{mapbg}`")
+  if mapoptions != args.last('mapoptions', args.last('options', mapoptions)):
+  # If the new mapoptions are different from the old ones, update and display
+   if args.last('mapoptions', args.last('options')) in ('none', 'None', True, 'true', 'True', None):
+    mapoptions = ""
+    desc.append(f"Map options reset")
+   else:
+    mapoptions = args.last('mapoptions', args.last('options', mapoptions))
+    desc.append(f"Map options changed to `{mapoptions}`")
+    if 'z' in mapoptions or mapoptions[0].isdigit():
+     zoom = ""
+     if 'z' in mapoptions:
+      zoom = ",".join([char for char in mapoptions.split('z')[1][0:3] if char.isdigit() or char == "."]).replace(",", "")
+     else:
+      zoom = ",".join([char for char in mapoptions[0:3] if char.isdigit() or char == "."]).replace(",", "")
+     desc.append(f' - Zoom set to {zoom}x')
+    if 'd' in mapoptions:
+     desc.append(f" - Dark Mode")
+    if 'n' in mapoptions:
+     desc.append(f" - Grid Hidden")
+    if 'e' in mapoptions:
+     desc.append(f" - Disable Border Opacity")
+    if 'f' in mapoptions:
+     desc.append(f" - Using alternative grid/token font")
+    if 'c' in mapoptions:
+     gsize = ""
+     gsize = ",".join([char for char in mapoptions.split("c")[1][0:2] if char.isdigit()]).replace(",", "")
+     desc.append(f' - Grid size adjusted to {gsize} px')
+    if 'h' in mapoptions:
+     gtrans = ""
+     gtrans = ",".join([char for char in mapoptions.split("h")[1][0:2] if char.isdigit()]).replace(",", "")
+     desc.append(f' - Grid transparancy adjusted to {gtrans}%')
+    if 'o' in mapoptions:
+     offset = ""
+     offset = ",".join([char for char in mapoptions.split("o")[1][0:5] if char.isdigit() or char == ":"]).replace(",", "")
+     desc.append(f" - Background Offset adjusted by {offset.replace(':', 'x')} px")
+  if mapview != args.last('mapview', args.last('view', mapview)):
+   # Do they want to reset the map view?
+   if args.last('mapview', args.last('view')).lower() in ('reset', 'none'):
+    mapviewlocation = mapviewsize = ""
+    desc.append(f"""Map view reset to default `{mapsize}`.""")
+   else:
+    # If the new mapview are different from the old one, update and display
+    mapview = args.last('mapview', args.last('view', mapview))
+    mapviewlocation = mapview.split(':')[0]
+    mapviewsize = mapview.split(':')[1]
+    if mapviewsize[0].isdigit():
+     mapSplitX, mapSplitY = mapviewsize.lower().split('x')
+     mapX = min(int(mapSplitX) if mapSplitX.isdigit() else 1, maxSize)
+     mapY = min(int(mapSplitY) if mapSplitY.isdigit() else 1, maxSize)
+    else:
+     locX = alph.index(''.join(x.upper() for x in mapviewlocation if x.isalpha()))
+     locY = int(''.join(y for y in mapviewlocation if y.isdigit()))
+     mapX = alph.index(''.join(x.upper() for x in mapviewsize if x.isalpha()))
+     mapY = int(''.join(y for y in mapviewsize if y.isdigit()))
+     mapX = mapX - locX + 1
+     mapY = mapY - locY + 1
+    mapviewsize = f"{mapX}x{mapY}"
+    desc.append(f"Map view changed to `{mapview if f'{mapviewlocation}:{mapsize}'==mapview else f'{mapview} ({mapviewsize})'}`")
+  #If there is a -wall
+  if args.last('wall'):
+   if args.last('wall') in ('none', 'None', True, 'true', 'True'):
+    walls = []
+    desc.append(f"Walls reset.")
+   else:
+    inputtedWalls = args.last('wall')
+    splitwall = inputtedWalls.split(",")
+    if len(splitwall) >1:
+     addedWalls = splitwall[0]
+     wallColor = splitwall[1]
+     finalWall = f"-c{wallColor}{addedWalls}"
+     walls.append(finalWall)
+     desc.append(f"Wall added: `{finalWall}`")
+    else:
+     walls.append(inputtedWalls)
+     desc.append(f"Wall added: `{inputtedWalls}`")
+  #If user wants to delete a specific already wall
+  if args.last('deletewall'):
+   inputtedWalls = args.last('deletewall')
+   remWalls = [wall for wall in walls if inputtedWalls.lower() != wall.lower()]
+   if len(walls) != len(remWalls):
+    desc.append(f"Wall removed: `{inputtedWalls}`")
+    walls = remWalls
+   else:
+    desc.append(f"Could not find wall: `{inputtedWalls}`")
+  #If there is a -object call
+  if args.last('object'):
+   #If user wants to remove ALL objects
+   if args.last('object') in ('none', 'None', True, 'true', 'True'):
+    objects = []
+    desc.append(f"Objects reset")
+   else:
+    foundObject = ""
+    argsObject = args.last("object").lower().split(":")
+    for object in presetObjects:
+     if argsObject[1] in object.lower():
+      foundObject = presetObjects[object]
+      break
+    if foundObject:
+     objectLocation = argsObject[0]
+     loadedObject=objectLocation+foundObject
+     objects.append(loadedObject)
+     desc.append(f"Object added `{object}:{loadedObject}`")
+    else:
+     desc.append("Could not find object")
+  #If user wants to delete a specific object
+  if args.last('deleteobject'):
+   foundObject = "There is no object by that name"
+   argsObject = args.last("deleteobject").lower().split(":")
+   for object in presetObjects:
+    if argsObject[1] in object.lower():
+     foundObject = presetObjects[object]
+     break
+   objectLocation = argsObject[0]
+   loadedObject=objectLocation+foundObject
+   objects.remove(loadedObject)
+   desc.append(f"Object `{object}:{loadedObject}` was removed")
+  # If user wants to save all mapinfo as well as combatant notes
+  if args.last('savebattle'):
+   argsBattle = args.last('savebattle')
+   mapBGState = {}
+   for key, value in mapinfo.items():
+    if value:
+     if mapinfo.get('background')!= None:
+      mapBGState["mapbg"] = mapinfo.get('background')
+     mapBGState["mapsize"] = mapsize
+     if mapinfo.get('options')!= None:
+      mapBGState["mapoptions"] = mapinfo.get('options')
+     if mapinfo.get('walls')!= None:
+      mapBGState["walls"] = mapinfo.get('walls').split(', ')
+     if mapinfo.get('objects')!= None:
+      mapBGState["objects"] = mapinfo.get('objects').split('/')
+     if mapinfo.get('view')!= None:
+      mapBGState["view"] = mapinfo.get('view')
+     if mapinfo.get('json')!= None:
+      mapBGState["json"] = mapinfo.get('json')
+     break
+   savedBGState = {"mapattach":mapBGState}
+   savedBGState.update(out)
+   savedBattle = {argsBattle:savedBGState}
+   userBattles.update(savedBattle)
+   set_uvar("mapBattles",dump_json(userBattles))
+   desc.append(f"Saved the battle `{argsBattle}`")
+  #If user want to delete an already saved battle
+  if args.last('deletebattle'):
+   inputtedBattle = args.last('deletebattle')
+   foundBattle = None
+   for battle in userBattles:
+    if inputtedBattle in battle.lower():
+     foundBattle = userBattles.pop(battle)
+     set_uvar("mapBattles", dump_json(userBattles))
+     desc.append(f"Deleted the battle `{inputtedBattle}`")
+     break
+   if not foundBattle:
+    desc.append(f"Did not find the battle you were looking for")
+  #If user wants to load a saved battle
+  if args.last('loadbattle'):
+   argsBattle = args.last('loadbattle').lower()
+   foundBattle = ""
+   for searchBattle in userBattles:
+    if argsBattle in searchBattle.lower():
+     foundBattle = userBattles[searchBattle]
+     foundBattleName = searchBattle
+     for searchCombatant in foundBattle:
+      if searchCombatant not in ("mapattach"):
+       foundCombatants = dict(list(foundBattle.items())[1:])
+       currentCombatants = [combat().get_combatant(name)]
+       #Here saved combatant notes are loaded unless combatant isn't in combat
+       if all([combat().get_combatant(searchCombatant) for searchCombatant in foundCombatants.keys()]):
+        out = dict(list(foundBattle.items())[1:])
+       else:
+        #Here lets user know what combatants they need to add to load ther info
+        missingCombatants = [combatants for combatants in foundCombatants if not combat().get_combatant(combatants)]
+        desc.append(f'You need to add the Combatant{"s" if len(missingCombatants) > 1 else ""} `{", ".join(missingCombatants)}` to load combatants info')
+        break
+      foundMapload = foundBattle["mapattach"]
+      if "mapbg" in foundMapload:
+       mapbg = foundMapload["mapbg"]
       else:
-       desc.append(f"You need to add your combatants to combat first to load their info")
+       mapbg = ""
+      if "mapsize"  in foundMapload:
+       mapsize = foundMapload["mapsize"]
+      if "mapoptions" in foundMapload:
+       mapoptions = foundMapload["mapoptions"]
+      else:
+       mapoptions = ""
+      if "walls" in foundMapload:
+       walls = foundMapload["walls"]
+      else:
+       walls = []
+      if "objects" in foundMapload:
+       objects = foundMapload["objects"]
+      else:
+       objects = []
+      if "json" in foundMapload:
+       loadedjson = foundMapload["json"].split(", ")
+      else:
+       loadedjson = []
+      if "view" in foundMapload:
+       mapviewlocation, mapviewsize = foundMapload["view"].replace('::',':').split(':')
+      desc.append(f"Loaded the battle `{foundBattleName}`")
+  #If user wants to load a saved json file
+  if loadedjson != args.last('loadjson', loadedjson):
+    #If user wants to clear ALL loaded json files
+    if args.last('loadjson') in ('none', 'None', 'reset'):
+      loadedjson = []
+      desc.append(f"JSON file removed")
+    else:
+      inputtedJson = args.last('loadjson')
+      loadedjson.append(inputtedJson)
+      desc.append(f"Loaded JSON File {inputtedJson}")
+  #If user wants to delete a specific loaded json file
+  if args.last('deletejson'):
+    inputtedjson = args.last('deletejson')
+    remjson = [json for json in loadedjson if inputtedjson.lower() != json.lower()]
+    if len(loadedjson) != len(remjson):
+      desc.append(f"JSON removed: `{inputtedjson}`")
+      loadedjson = remjson
+    else:
+      desc.append(f"Could not find JSON: `{inputtedjson}`")
+  # If there is a -mapattach, and its a valid target in init
+  if args.last('mapattach', args.last('attach')) and gt(args.last('mapattach', args.last('attach'))):
+   # First check if there is an existing mapattach, and if its the same as the new one, then remove their map effect
+   if typeof(mapattach)=="SimpleCombatant" and gt(args.last('mapattach', args.last('attach'))).name != mapattach.name:
+    mapattach.remove_effect('map')
+   # Then, set the new mapattach
+   mapattach = gt(args.last('mapattach', args.last('attach')))
+  # If theres mapattach set, and they currently have a map effect, remove it
+  if mapattach and mapattach.get_effect('map'):
+   mapattach.remove_effect('map')
+  # Format everything appropriately
+  setMapView = f"{mapviewlocation}:{mapviewsize}"
+  neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ View: {setMapView}" if setMapView.strip(':') else ''}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f" ~ Walls: {', '.join(walls)}" if walls else""}{f' ~ Objects: {"/".join(objects)}' if objects else ""}{f' ~ JSON: {", ".join(loadedjson)}' if loadedjson else ""}""".strip(" ~")
+  # If mapattach exists, apply the new effect, and display
+  if mapattach:
+   mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
+   desc.append(f"Map settings attached to `{mapattach.name}`")
+  # Otherwise, show that it was changed, but not saved
+  else:
+   # Look for a combatant named DM or Map, auto attach
+   for maptarg in ("map", "dm", "lair"):
+     if c.get_combatant(maptarg):
+       mapattach = c.get_combatant(maptarg)
+       mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
+       desc.append(f"""Autoattached map settings to {mapattach.name}""")
        break
+   else:
+    desc.append("Map settings changed, but no map attach target was found. Settings not saved.")
 </drac2>
 
 <drac2>
@@ -1380,8 +1355,8 @@ if c:
   overlays=[]
  # Join everything together and display the map if we aren't displaying the help
  overlays = [f"*{overlay.strip('*')}" for overlay in overlays]
- if not any(args.get(arg) for arg in ('?', 'help', 'spelllist', 'spellbook', 'maplist', 'bglist', 'backgroundlist', 'viewlist')):
-  finalMap = f"""{map}{mapsize}{f"/{mapviewlocation}:{mapviewsize}" if mapviewsize and mapviewlocation else ""}/{f'_{"".join(walls)}/' if walls else ""}{f"@{mapoptions}/"if mapoptions else""}{f'{"/".join(objects)}/' if objects else ""}{'/'.join(people+overlays)}{f"?bg={mapbg}" if mapbg else ""}{f"?load={'&load='.join(loadedjson)}" if loadedjson else ""}"""
+ if not any(args.get(arg) for arg in ('?', 'help', 'spelllist', 'spellbook', 'maplist', 'bglist', 'backgroundlist', 'viewlist', "battlelist")):
+  finalMap = f"""{map}{f"" if mapsize == "JSON" else f"{mapsize}/" if mapsize else ""}{f"{mapviewlocation}:{mapviewsize}/" if mapviewsize and mapviewlocation else ""}{f'_{"_".join(walls)}/' if walls else ""}{f"@{mapoptions}/"if mapoptions else"@/"}{f'{"/".join(objects)}/' if objects else ""}{'/'.join(people+overlays)}{f"?load={'&load='.join(loadedjson)}" if loadedjson else ""}?a=1&cid={ctx.channel.id}&sid={ctx.guild.id}&uid={ctx.author.id}{"&d=1" if testVersion else ""}{f"&bg={mapbg}" if mapbg else ""}"""
   return f"""{'' if args.last('silent') else f'-image "{finalMap}"'} -f "[Map]({finalMap})" """ + (f"""  -desc "{newline.join(desc)}"  """ if desc else "")
 </drac2>
 
@@ -1437,7 +1412,7 @@ elif args.get('viewlist'):
   presetPage = f"""-desc "No results found{f" for search term `{args.last('search')}`" if args.last('search') else ''}." """
  # Add some pizazz
  return presetPage + f"""-title "Say hello to my little preset"
-                        -f "Add your own `-mapview` presets| You can create your own presets by running the command `-saveview <presetname>,<mapview preset>`"  """
+                        -f "Add your own `-view` presets| You can create your own presets by running the command `-saveview <presetname>,<mapview preset>`"  """
 elif args.get('tokenlist'):
      # Only grab the page selected, default to first
  if tokenPagin:
@@ -1447,7 +1422,7 @@ elif args.get('tokenlist'):
  # Add some pizazz
  return tokenPage + f"""-title "Token for your thoughts"  """
 elif args.get('battlelist'):
-     # Only grab the page selected, default to first
+ # Only grab the page selected, default to first
  if battlePagin:
   battlePage = f"""-desc "{newline.join(battlePagin[ min(len(battlePagin),args.last('page', 1, int)-1)] )}" """
  else:
@@ -1460,7 +1435,7 @@ elif not c or args.get('?') or args.get('help'):
   help = f"""-title "Maps: overlays and spells"
             -desc "{["Bro","Broski","Brotein","Brosicle","Broseph","Brotastic","Han Brolo","Broba Fett","Brotato Chip","Broseidon","Brochacho","Broebh"][randint(12)]}, I'm so Over this!
 
-            Check our [Overlays Guide](http://docs.otfbm.com/#/overlays) for detailed explanations of the commands below. Note: radius, size, length and width are in feet. For valid colours see below.
+            Check our [Overlays Guide](http://docs.otfbm.com/#/guides-overlays) for detailed explanations of the commands below. Note: radius, size, length and width are in feet. For valid colours see below.
 
             **__Basic Overlays__**
             `-over circle,<radius>,<color>,<center>` - Draws a circle centered on a coordinate.
@@ -1495,7 +1470,7 @@ elif not c or args.get('?') or args.get('help'):
             Note: `-over2`/`-spell2` will be linked to `-aim2` and `-effect2`, and so on, for each overlay."
             """.replace(" "*11,"") + colorhelp
  elif any(args.last(potentialArg) for potentialArg in ('map', 'manage', 'options', 'dm', 'gm')):
-  help = f"""-title "Maps: Visual Options"
+  help =  """-title "Maps: Visual Options"
              -desc "Wait, were we in the dungeon or the pub?
 
              **__Allow the Map Settings to Save__**
@@ -1507,6 +1482,8 @@ elif not c or args.get('?') or args.get('help'):
 
              **__Map Size and Background Image__**
              `-mapsize <size>` - Sets the size of the map. Example: `-mapsize 20x20`
+             `-mapsize reset` - Sets mapsize to default settings
+             `-mapsize json` - Sets mapsize to read settings from loaded json file
              `-bg <url>` - Imports an image to use as background. Use `-options c` / `o`, see below, to scale / offset the image to match the grid.
              `-bg none` - Removes the background.
 
@@ -1521,15 +1498,27 @@ elif not c or args.get('?') or args.get('help'):
              `-view <coordinate>:<gridsize>` - Focuses on a portion of the map, but with a specified size instead of an end location. Example: `-view A3:4x10`
              `-view reset` - Returns to full view.
 
-             **__Saving, loading and deleting views__**
+             **__Saving, Loading and Deleting views__**
              `!map viewlist` - Lists all saved views.
              `-saveview <name>,<coordinate>:<coordinate>` - Saves a view, for quick access. Example: `-saveview Ambush,K5:Z15`
              `-loadview <name>` - Loads a saved view.
-             `-deleteview <name>` - Deletes a saved view."
+             `-deleteview <name>` - Deletes a saved view.
+
+             **__Saving, Loading and Deleting Battles__**
+             `!map battlelist` - Lists all saved battles.
+             `-savebattle <name>` - Saves a battle, for quick access. This will include your map settings, as well as combatants and any overlays that are attached to them.
+             `-loadbattle <name>` - Loads a saved battle.
+             `-deletebattle <name>` - Deletes a saved battle."
+
+             -f "**__Loading and Deleteing Json Files__**
+             `-loadjson <url>` - Loads Json file.
+             `-deletejson` - Deletes A Specific Json File
+             `-loadjson reset` - Deletes All Json Files
+             See [Predefined Maps and Tokens](http://docs.otfbm.com/#/predefined-maps-and-tokens) for detailed explination."
 
              -f "_ _|**__Interface Options__**
              `-options [args]` - Changes visual options using the following arguments:
-             `<#>` - Different zoom options, accepts fractions. Example: `-options 1.5`
+             `z<#>` - Changes the map's resolution, range 1-3, accepts fractions. The higher the value the larger the map will be, allowing to zoom in without loosing image quality. Example: `-options z1.5`
              `d` - Dark mode
              `h<#>` - Sets the grid's transparancy, range 1-99. Example: `-options h10` would set it to 10%.
              `n` - Hides the grid.
@@ -1538,23 +1527,30 @@ elif not c or args.get('?') or args.get('help'):
              `c<#>` - Sets the grid's unit size (in px). Default: 60.
              `o<#>:<#>` - Offsets the background image (in px). Example: `-options o20:40` would offset it 20px down and 40px to the right.
              Run `-options` without a specific argument to revert its change. With no arguments it'll reset every change.
-             You can set multiple settings at a time. If you do, zoom should be your first option, if you're setting it. Example: `-options 2n` would set zoom to 2 and hide the grid."
+             You can set multiple settings at a time. Example: -options z2n would set the resolution at 2x and hide the grid."
+
 
              -f "_ _|**__Backup / Restore__**
              `!map undo` - Reverts all combatants to the state of last time you ran a `!map` command. You only have one undo, and running `!map undo` a second time undoes it. This information is kept in the `mapStates` uvar, keyed to the channel ID."
+
+             -f "_ _|**__Server Settings__**
+             To set defaults for your server, simply create an svar named `mapDefaults`, containing a dict as follows, filling in the information as needed:
+             `!svar mapDefaults {\\\"size\\\":\\\"\\\", \\\"background\\\":\\\"\\\", \\\"options\\\":\\\"\\\"}`
+
+             You can also copy your `mapOverlays`, `mapPresets`, `mapTokens`, `mapBattles`, `trueDistance` uvars into svars, and they'll be set/available for the whole server."
   """
  elif any(args.last(potentialArg) for potentialArg in ('walls', 'wall', 'door', 'doors', 'object', 'objects')):
   help = f"""-title "Map: Walls, Doors and Objects"
              -desc "**__Allow the Walls and Objects to Save__**
              The map attaches these walls and objects automatically to any combatant in the initiative order that's named `DM`, `Map`, or `Lair`. Attaching a map allows every change that's made to it to be saved. We recommend adding a dedicated combatant for this, instead of a player or a monster, to prevent the map from vanishing when a player exits combat, or a monster is killed. Regardless, you can manually attach the map to any other combatant by running `-attach <target>`.
 
-             If these walls and objects are run when they aren't attached to a `-attach` target, then the change will be temporary, and will be removed the next time you run the `!map` command.
+             If these walls and objects are run when they aren't attached to a `-attach` target, then the change will be temporary, and will be removed the next time you run the `!map` command."
 
-             **__Walls and Doors__**
+             -f "**__Walls and Doors__**
              Check our [Walls and Doors Guide](http://docs.otfbm.com/#/wallsanddoors) for detailed explanations of the commands below.
 
              __Walls__
-             `-wall <coordinate><coordinate>` - Draws a wall directly onto the grid, between two coordinates. Example: `-wall B3J3_B6J6` would draw a line from B3 to J3, and another from B6 to J6. Walls can be added one at a time, or multiple at a time with multiple `-wall`.
+             `-wall <coordinate><coordinate>[,color]` - Draws a wall directly onto the grid, between two coordinates. Example: `-wall B3J3_B6J6` would draw a line from B3 to J3, and another from B6 to J6. Walls can be added one at a time, or multiple at a time with multiple `-wall`. When adding walls you can make each one any color you want. Example: `-wall b2b9,r`.
              `-deletewall <code>` - Allows you to delete an individual wall
 
              __Doors__
@@ -1563,9 +1559,9 @@ elif not c or args.get('?') or args.get('help'):
              `-d` - Closed Door.
              `-b` - Double Door.
              `-s` - Secret Door.
-             Put one of these arguments between two coordinates that make a wall to draw a door in the middle. Example: `-wall B3-oD3` would draw an open door between B3 and D3.
+             Put one of these arguments between two coordinates that make a wall to draw a door in the middle. Example: `-wall B3-oD3` would draw an open door between B3 and D3."
 
-             **__Objects__**
+             -f "**__Objects__**
              `-object <location>:<object>` - Adds an object to the map. Some objects can be placed over multiple squares, to do so add a second coordinate after the first. Example: `-object A1B4:trap` would expand an trap object from A1 to B4. Objects can be added one at a time, or multiple at a time with multiple `-object`.
              `-deleteobject <location>:<object>` - Deletes the specified object from the map
 
@@ -1615,7 +1611,7 @@ elif not c or args.get('?') or args.get('help'):
              `-loadtoken <tokenName>` - Allows you to load a saved token to a target. Example: `!map -t go1 -loadtoken goblin`
 
              **__Additional Information__**
-             The map calculates distances based on 5ft diagonals. If you would rather 'True' distances, run `!uvar trueDistance true`. To revert back, use `!uvar delete trueDistance`." """ + colorhelp + sizehelp
+             The map calculates distances based on 5ft diagonals. If you would rather 'True' distances, run `!uvar trueDistance true`. To revert back, use `!uvar delete trueDistance`. You can also set this at a server level with `!svar trueDistance true`" """ + colorhelp + sizehelp
 
  help += helpindex
  if not combat():
@@ -1637,14 +1633,16 @@ if any(args.last(arg) for arg in ('maplist','bglist','backgroundlist','viewlist'
  paginFooter += " | -search [name] to search"
 </drac2>
 
--footer "!map ?{{f" | Map settings attached to {mapattach.name}" if mapattach else ""}}{{paginFooter}} | v2.01"
+-footer "!map ?{{f" | Map settings attached to {mapattach.name}" if mapattach else ""}}{{paginFooter}} | v2.1"
+
 <drac2>
 # this is for debugging, only display in testing channels
-if int(chanid()) in (712795723623694376, 720465301329805332, 746474041577308301) and finalMap and args.last('debug'):
+if args.last('debug'):
  return f"""-f "Debug (Only appears in this channel)|```{overlays=}
  {people=}
  {debug=}
  {objects=}
  {walls=}```" """
 </drac2>
+
 -color <color>

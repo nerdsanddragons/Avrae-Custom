@@ -1,28 +1,10 @@
 <drac2>
-if args.last('loadurl'):
- loadedArgs = args.last('loadurl')
- if [x for x in loadedArgs if loadedArgs in "?bg="]:
-  seperatedInitalLoad = loadedArgs.split("?bg=")
-  seperatedLoad = seperatedInitalLoad[0].split("/")
-  mapbg = seperatedInitalLoad[1]
- else:
-  seperatedLoad = loadedArgs.split("/")
- walls = [searchLoad for searchLoad in seperatedLoad if searchLoad.startswith('_')]
- mapsize = seperatedLoad[3]
- if [x for x in seperatedLoad if x in "@"]:
-  setMapOption = f"{[searchLoad for searchLoad in seperatedLoad if searchLoad.startswith('@')]}"
-  mapoptions = setMapOption.replace('@', '').replace("'", "").replace("[", "").replace("]", "")
- mapviewlocation = mapviewsize = ""
- setMapview = ""
- neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f' ~ Walls: {", ".join(walls)}' if walls else ""}{f' ~ Objects: {"/".join(objects)}' if objects else ""}{f" ~ View: {setMapview}" if setMapview else ""}""".strip(" ~")
- if mapattach:
-  mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
- desc.append(f"Loaded {loadedArgs}")
-</drac2>
-
-<drac2>
 if args.last('distance'):
- argsDist = args.last('distance').split(':')
+ fName = sName = ""
+ cardinal = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW","W", "WNW", "NW", "NNW"]
+ tan = [[0,0.0000],[1,0.0175],[2,0.0349],[3,0.0524],[4,0.0699],[5,0.0875],[6,0.1051],[7,0.1228],[8,0.1405],[9,0.1584],[10,0.1763],[11,0.1944],[12,0.2126],[13,0.2309],[14,0.2493],[15,0.2679],[16,0.2867],[17,0.3057],[18,0.3249],[19,0.3443],[20,0.3640],[21,0.3839],[22,0.4040],[23,0.4245],[24,0.4452],[25,0.4663],[26,0.4877],[27,0.5095],[28,0.5317],[29,0.5543],[30,0.5774],[31,0.6009],[32,0.6249],[33,0.6494],[34,0.6745],[35,0.7002],[36,0.7265],[37,0.7536],[38,0.7813],[39,0.8098],[40,0.8391],[41,0.8693],[42,0.9004],[43,0.9325],[44,0.9657],[45,1.0000],[46,1.0355],[47,1.0724],[48,1.1106],[49,1.1504],[50,1.1918],[51,1.2349],[52,1.2799],[53,1.3270],[54,1.3764],[55,1.4281],[56,1.4826],[57,1.5399],[58,1.6003],[59,1.6643],[60,1.7321],[61,1.8040],[62,1.8807],[63,1.9626],[64,2.0503],[65,2.1445],[66,2.2460],[67,2.3559],[68,2.4751],[69,2.6051],[70,2.7475],[71,2.9042],[72,3.0777],[73,3.2709],[74,3.4874],[75,3.7321],[76,4.0108],[77,4.3315],[78,4.7046],[79,5.1446],[80,5.6713],[81,6.3138],[82,7.1154],[83,8.1443],[84,9.5144],[85,11.4301],[86,14.3007],[87,19.0811],[88,28.6363],[89,57.2900]]
+ argsColor = args.last('distance').split(',')
+ argsDist = argsColor[0].split(':')
  height = int(argsDist[2] if len(argsDist) > 2 else "0")
  prevLoc = argsDist[0] if len(argsDist) > 1 else "A1" if argsDist else ""
  if c and (firstTarget := c.get_combatant(prevLoc)):
@@ -72,10 +54,10 @@ if args.last('distance'):
   else:
     degree = 0 if deltaY > 0 else 180 if deltaY < 0 else 90 if deltaX > 0 else 270
   card = cardinal[floor((degree)//22.5)%16]
-  colr = (args.last('color', out[targ.name].get('color','p')) + " ").strip("#~").lower()
-  colr = colr[:colr.index(" ")]
-  if len(colr) in (3, 6) and not colr.strip("abcdef1234567890"):
-   colr = f"~{colr}"
+  if len(argsColor)>1:
+   colr= argsColor[1]
+  else:
+   colr = f"~62C1BF"
   # Add the line to the overlay list
   if fName and sName != "":
    overlays.append(f"*a{distance}{colr}{prevLocX}{prevLocY}{newLocX}{newLocY}")
@@ -89,8 +71,108 @@ if args.last('distance'):
    overlays.append(f"*a{distance}{colr}{prevLocX}{prevLocY}{newLocX}{newLocY}")
    overlays.append(f"*s5{colr}{prevLocX}{prevLocY}")
    overlays.append(f"*s5{colr}{newLocX}{newLocY}")
-  if height == 0:
-   desc.append(f"{get('fName')}({alph[alph.index(prevLocX)].upper()}{prevLocY}) -> {get('sName')}({alph[alph.index(newLocX)].upper()}{newLocY}) | {~{distanceT} if get('trueDistance') else distance} ft. {card} (~{degree}°)")
-  else:
-   desc.append(f"{get('fName')}({alph[alph.index(prevLocX)].upper()}{prevLocY}) -> {get('sName')}({alph[alph.index(newLocX)].upper()}{newLocY}) (Height: {height*5} ft. {'up' if height>0 else 'down' if height else ''}) | {~{distanceT} if get('trueDistance') else distance} ft. {card} (~{degree}°)")
+  heightInfo = f"(Height: {height*5} ft. {'up' if height>0 else 'down' if height else ''})"
+  desc.append(f"{get('fName')}({alph[alph.index(prevLocX)].upper()}{prevLocY}) -> {get('sName')}({alph[alph.index(newLocX)].upper()}{newLocY}) {heightInfo if height>0 else ''} | {~{distanceT} if get('trueDistance') else distance} ft. {card} (~{degree}°)")
 </drac2>
+
+<drac2>
+# -options
+if 'z' in mapoptions or mapoptions[0].isdigit():
+     zoom = ""
+     if 'z' in mapoptions:
+      zoom = ",".join([char for char in mapoptions.split('z')[1][0:3] if char.isdigit() or char == "."]).replace(",", "")
+     else:
+      zoom = ",".join([char for char in mapoptions[0:3] if char.isdigit() or char == "."]).replace(",", "")
+     desc.append(f' - Zoom set to {zoom}x')
+    if 'd' in mapoptions:
+     desc.append(f" - Dark Mode")
+    if 'n' in mapoptions:
+     desc.append(f" - Grid Hidden")
+    if 'e' in mapoptions:
+     desc.append(f" - Disable Border Opacity")
+    if 'f' in mapoptions:
+     desc.append(f" - Using alternative grid/token font")
+    if 'c' in mapoptions:
+     gsize = ""
+     gsize = ",".join([char for char in mapoptions.split("c")[1][0:2] if char.isdigit()]).replace(",", "")
+     desc.append(f' - Grid size adjusted to {gsize} px')
+    if 'h' in mapoptions:
+     gtrans = ""
+     gtrans = ",".join([char for char in mapoptions.split("h")[1][0:2] if char.isdigit()]).replace(",", "")
+     desc.append(f' - Grid transparancy adjusted to {gtrans}%')
+    if 'o' in mapoptions:
+     offset = ""
+     offset = ",".join([char for char in mapoptions.split("o")[1][0:5] if char.isdigit() or char == ":"]).replace(",", "")
+     desc.append(f" - Background Offset adjusted by {offset.replace(':', 'x')} px")
+</drac2>
+
+<drac2>
+# -status
+if 'z' in options or options[0].isdigit():
+      zoom = ""
+      if 'z' in options:
+       zoom = ",".join([char for char in options.split('z')[1][0:3] if char.isdigit() or char == "."]).replace(",", "")
+      else:
+       zoom = ",".join([char for char in options[0:3] if char.isdigit() or char == "."]).replace(",", "")
+      desc.append(f' - Zoom set to {zoom}x')
+     if 'd' in options:
+      desc.append(f" - Dark Mode")
+     if 'n' in options:
+      desc.append(f" - Grid Hidden")
+     if 'e' in options:
+      desc.append(f" - Disable Border Opacity")
+     if 'f' in options:
+      desc.append(f" - Using alternative grid/token font")
+     if 'c' in options:
+      gsize = ""
+      gsize = ",".join([char for char in options.split("c")[1][0:2] if char.isdigit()]).replace(",", "")
+      desc.append(f' - Grid size adjusted to {gsize} px')
+     if 'h' in options:
+      gtrans = ""
+      gtrans = ",".join([char for char in options.split("h")[1][0:2] if char.isdigit()]).replace(",", "")
+      desc.append(f' - Grid transparancy adjusted to {gtrans}%')
+     if 'o' in options:
+      offset = ""
+      offset = ",".join([char for char in options.split("o")[1][0:5] if char.isdigit() or char == ":"]).replace(",", "")
+      desc.append(f" - Background Offset adjusted by {offset.replace(':', 'x')} px")
+</drac2>
+
+<drac2>
+# Help Menu for options
+-f "_ _|**__Interface Options__**
+             `-options [args]` - Changes visual options using the following arguments:
+             `z<#>` - Changes the map's resolution, range 1-3, accepts fractions. The higher the value the larger the map will be, allowing to zoom in without loosing image quality. Example: `-options z1.5`
+             `d` - Dark mode
+             `h<#>` - Sets the grid's transparancy, range 1-99. Example: `-options h10` would set it to 10%.
+             `n` - Hides the grid.
+             `e` - Everything outside the map's edges becomes invisible.
+             `f` - Use alternative grid/token font
+             `c<#>` - Sets the grid's unit size (in px). Default: 60.
+             `o<#>:<#>` - Offsets the background image (in px). Example: `-options o20:40` would offset it 20px down and 40px to the right.
+             Run `-options` without a specific argument to revert its change. With no arguments it'll reset every change.
+             You can set multiple settings at a time. Example: -options z2n would set the resolution at 2x and hide the grid."
+</drac2>
+
+tembed
+<drac2>
+testVersion = True
+args = "@@@"
+# args = "@@@" if typeof("@@@") == "SafeList" else &ARGS&
+defaults = "&&&" if typeof("&&&") == "SafeDict" else None
+
+# Comment the first line for `!map`, second line for `!move`
+# args = argparse((['-t',combat().me.name if combat().me else combat().current.name] if combat() and (combat().me or combat().current) else []) + ['-move']+args if args else [])
+args = argparse(args)
+
+
+
+
+
+embed
+<drac2>
+testVersion = False
+argList = &ARGS&
+
+# Comment the first line for `!map`, second line for `!move`
+# args = argparse((['-t',combat().me.name if combat().me else combat().current.name] if combat() and (combat().me or combat().current) else []) + ['-move']+argList if argList else [])
+args = argparse(argList)
