@@ -1,0 +1,301 @@
+tembed
+<drac2>
+# Set base variables
+testVersion = True
+args = argparse("@@@")
+traps = load_json(get_gvar("cf67391b-7c1c-4de6-b56e-56e63e5df34b"))
+keyType = ["a", "u", "c", "e", "f", "o", "l", "n", "p", "s", "t", "r"]
+dtype = {"a": "Acid", "u": "Bludgeoning", "c": "Cold", "e": "Piercing", "f": "Fire", "o": "Force", "l": "Lightning", "n": "Necrotic", "p": "Poison", "s": "Slashing", "t": "Thunder", "r": "Radiant"}
+objectType = {"a": "pu", "u": "un", "c": "co", "e": "un", "f": "fi", "l": "li", "n": "cr", "o": "wi", "p": "pu", "s": "un", "t": "ex", "r": "ex"}
+c = combat()
+gt = c.get_combatant if c else None
+map="http://otfbm.io/"
+mapinfo = ""
+mapview = ""
+mapviewsize = ""
+mapviewlocation = ""
+mapattach = ""
+objects = []
+walls = []
+loadedjson = []
+mapsize = ""
+maxSize = 99
+baseAlph = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+alph = []
+for index in range(maxSize):
+  letter = ""
+  if index // 26:
+    letter = baseAlph[(index // 26) - 1]
+  letter += baseAlph[index % 26]
+  alph.append(letter)
+out={}
+overlays=[]
+desc = []
+nameStrip = r"""'"()[]{}*?^%$&#/-~“”‘’"""
+# F-Strings
+newline = "\n"
+</drac2>
+
+<drac2>
+typeInput = args.last("type")
+if args.last("type"):
+ splitInput = typeInput.split(",")
+ if len(splitInput) >1:
+  levelInput = int(splitInput[1])
+  outputType = traps[splitInput[0]]
+  desc.append(f"{outputType[randint(3)]}")
+  if levelInput <= 4:
+   damageDice = "1d10"
+  elif 10>= levelInput >= 5:
+   damageDice = "2d10"
+  elif 16>= levelInput >= 11:
+   damageDice = "4d10"
+  elif 20>= levelInput >= 17:
+   damageDice = "10d10"
+ elif len(splitInput) == 1:
+  damageDice = "1d10"
+  outputType = traps[f'{"".join(typeInput)}']
+  desc.append(f"{outputType[randint(3)]}")
+else:
+ desc.append(f'{traps[list(traps)[randint(12)]][randint(3)]}')
+</drac2>
+
+<drac2>
+if args.last('dc'):
+  dc = int(args.last('dc'))
+else:
+  dc = 12
+</drac2>
+
+<drac2>
+if c:
+ for masstarg in args.get('t'):
+  mTarg, tArgs = (masstarg.split('|') + [""])[:2]
+  if (mTarg := gt(mTarg)):
+   args.add_context(mTarg.name, argparse(tArgs))
+   args.set_context(mTarg.name)
+   dexSaveRoll = mTarg.saves.get("dex").d20(args.adv(boolwise=True))
+   dexSaveRoll  += '+' + args.join('b', '+') if args.last('b') else ''
+   dRoll = vroll(dexSaveRoll)
+   if dRoll.total <= dc:
+    if args.last("type"):
+     damageType = dtype[splitInput[0]]
+    else:
+     damageType = ""
+    damagedReceived = mTarg.damage(f'{damageDice}{f"[{damageType}]" if damageType else ""}').damage
+   desc.append(f'\nDex Save: {dRoll} vs DC: `{dc}`\n{mTarg.name} was caught in a trap {f"and received {damagedReceived}" if dRoll.total <= dc else f"but escaped unharmed."}')
+</drac2>
+
+<drac2>
+# If we're in combat, check all the things
+if c:
+ # Collect information on every combatant
+ for combatant in combat().combatants:
+  # Grab map information, if it exists
+  for attack in combatant.attacks:
+   if attack.name == 'map':
+    mapattach=combatant
+    mapinfo=attack.raw.automation[0].text
+</drac2>
+
+<drac2>
+if c:
+ # If we found a `map` attack with information, parse it now
+ if mapinfo:
+  # Split and convert to dict. Couldn't use | here because of how -attack effects are parsed
+  mapinfo=mapinfo.split(' ~ ')
+  mapinfo={x[0].lower():x[1] for x in [item.split(': ') for item in mapinfo]}
+  mapsize=mapinfo.get('size')
+  if mapsize != "JSON":
+   if ":" in mapsize:
+     mapLocSize = mapsize.split( ':')
+     mapviewlocation = f"{mapLocSize[0]}:"
+     mapsize = mapviewsize = mapLocSize[1]
+   if mapsize[0].isdigit():
+    mapSplitX, mapSplitY = mapsize.lower().split('x')
+    mapX = min(int(mapSplitX) if mapSplitX.isdigit() else 1, maxSize)
+    mapY = min(int(mapSplitY) if mapSplitY.isdigit() else 1, maxSize)
+   else:
+    mapX = alph.index(''.join(x.upper() for x in mapsize if x.isalpha()))
+    mapY = int(''.join(y for y in mapsize if y.isdigit()))
+   mapsize = f"{mapX}x{mapY}"
+  mapbg=mapinfo.get('background')
+  mapoptions=mapinfo.get('options')
+  walls = mapinfo.get('walls')
+  walls = walls.split(', ') if walls else []
+  objects = mapinfo.get('objects')
+  objects = objects.split('/') if objects else []
+  loadedjson = mapinfo.get('json')
+  loadedjson = loadedjson.split(', ') if loadedjson else []
+  if mapinfo.get('view'):
+   mapviewlocation, mapviewsize = mapinfo.get('view').replace('::',':').split(':')
+</drac2>
+
+<drac2>
+if args.last('location'):
+  argsLocation = args.last('location')
+  if args.get('type'):
+   objectInput = objectType[splitInput[0]]
+   objects.append(f"{argsLocation}${objectInput}")
+  else:
+   objects.append(f"{argsLocation}$T")
+  desc.append(f"\nA trap was revealed in space {argsLocation.upper()}")
+</drac2>
+
+<drac2>
+if mapattach and mapattach.get_effect('map'):
+ # Format everything appropriately
+ setMapView = f"{mapviewlocation}:{mapviewsize}"
+ neweffect = f"""{f"Size: {mapsize}" if mapsize else ""}{f" ~ View: {setMapView}" if setMapView.strip(':') else ''}{f" ~ Background: {mapbg}" if mapbg else ""}{f" ~ Options: {mapoptions}" if mapoptions else ""}{f" ~ Walls: {', '.joi(walls)}" if walls else""}{f' ~ Objects: {"/".join(objects)}' if objects else ""}""".strip(" ~")
+ # If mapattach exists, apply the new effect, and display
+ if mapattach:
+  mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
+ # Otherwise, show that it was changed, but not saved
+ else:
+  # Look for a combatant named DM or Map, auto attach
+  for maptarg in ("map", "dm", "lair"):
+    if c.get_combatant(maptarg):
+      mapattach = c.get_combatant(maptarg)
+      mapattach.add_effect('map', f"""-attack "||{neweffect}" """)
+      desc.append(f"""Autoattached map settings to {mapattach.name}""")
+      break
+</drac2>
+
+<drac2>
+if c:
+ # Read each combatants notes for their information
+ for target in combat().combatants:
+  # If they have a note, perse it into a dict
+  if target.note and ':' in target.note:
+   note=target.note
+   note=note.split(" | ")
+   note={x[0].lower():x[1] for x in [item.split(": ") for item in note]}
+   out[target.name]=note
+   # Check if we have any overlays attached to effects, and then if at effect exists
+   for overNum in [""]+[str(x) for x in range(1,11)]:
+    if out[target.name].get('effect'+overNum):
+     checkEffect, checkEffectTarget = out[target.name].get('effect'+overNum).split(' / ')
+     # If the effect (or the target it was on) are gone, remove the effect
+     if not gt(checkEffectTarget) or not gt(checkEffectTarget).get_effect(checkEffect):
+      _ = out[target.name].pop('effect'+overNum) if 'effect'+overNum in out[target.name] else None
+      _ = out[target.name].pop('aim'+overNum) if 'aim'+overNum in out[target.name] else None
+      _ = out[target.name].pop('overlay'+overNum) if 'overlay'+overNum in out[target.name] else None
+      desc.append(f"""Overlay {overNum} removed from `{target.name}` because effect `{checkEffect}` no longer present{f" on {checkEffectTarget}" if checkEffectTarget!=target.name else ""}.""")
+      desc.append("")
+    # # If the overlay was -aim'd at a target, and if that aim target exists still
+    # if out[target.name].get('aim'+overNum):
+    #  aimTarget = out[target.name].get('aim'+overNum)
+    #  aimTargetX = ''.join([i for i in aimTarget if i.isalpha()])
+    #  aimTargetY = int(''.join([i for i in aimTarget if i.isdigit()]) or -1)
+    #  if not (aimTargetX.upper() in alph[:mapX+2] and 0 < aimTargetY <= mapY and not gt(aimTarget)):
+    #   _ = out[target.name].pop('effect'+overNum) if 'effect'+overNum in out[target.name] else None
+    #   _ = out[target.name].pop('aim'+overNum) if 'aim'+overNum in out[target.name] else None
+    #   _ = out[target.name].pop('overlay'+overNum) if 'overlay'+overNum in out[target.name] else None
+    #   desc.append(f"""Overlay {overNum} removed from `{target.name}` because aim target `{aimTarget}` no longer present.""")
+    #   desc.append("")
+  elif target.note:
+    note=target.note
+    desc.append(f"Found a incorrectly formatted note on {target.name}, reformatted as a `-note`. ")
+    out[target.name] = {"note": note.replace(':',' ').replace('|',' ')}
+</drac2>
+
+<drac2>
+if c:
+ # Parse the collected notes and information into the format readable by otfbm.com
+ people = []
+ for target in out:
+  tLocation = out[target].get('location')
+  tSize = out[target].get('size','M')[0].upper()
+  tColor = out[target].get('color', 'b' if '/' in gt(target).hp_str() else 'r') + " "
+  tColor = tColor[:tColor.index(" ")].strip('#')
+  tToken = out[target].get('token')
+  # Account for hex colors
+  if len(tColor) in (3, 6):
+   tColor = f"~{tColor}".upper()
+  tName = target.translate(str.maketrans(' ', '_', nameStrip))
+  # Only display if they have a location
+  if tLocation:
+    people.append(f"{tLocation}{tSize}{tColor}-{tName}{f'~{tToken}' if tToken else ''}")
+  # Do they have a height set? If so, display it
+  if out[target].get('height'):
+   desc.append(f"{target} is currently {out[target].get('height').strip('-+')} ft. {['above','below'][int(out[target].get('height').strip(' ft.m'))<0] if out[target].get('height').strip(' -+ft.m').isdigit() else 'above'} the ground.")
+  # Do they have overlays?
+  for overNum in [""]+[str(x) for x in range(1,11)]:
+    # Ensure we're not grabbing the previous overlays aim point
+    targAimPoint = ""
+    if out[target].get('overlay'+overNum):
+     targPoint = out[target].get('location','A1')
+     # Is our target Large or bigger? If so, adjust accordingly
+     if out[target].get('size',"M")[0] in "LHG":
+      targOffset = sizeOffset.get(out[target].get('size',"M")[0])
+      TargX = ''.join(x for x in targPoint if x.isalpha())
+      TargY = int(''.join(y for y in targPoint if y.isdigit()))
+      TargX = alph[alph.index(TargX)+targOffset]
+      TargY += targOffset
+      targPoint = f"{TargX}{TargY}"
+     # If the target has an aim point set
+     if out[target].get('aim'+overNum):
+      for aimTarget in out:
+       # We need to check to see if they were targetting a... target
+       if out[target].get('aim'+overNum).lower() in aimTarget.lower():
+        targAimPoint = out[aimTarget]['location']
+        # Is our aimTarget larger than medium? If so, we need to offset to adjust
+        if out[aimTarget].get('size',"M")[0] in "LHG":
+         targAimOffset = sizeOffset.get(out[aimTarget].get('size',"M")[0])
+         targAimTargX = ''.join(x for x in targAimPoint if x.isalpha())
+         targAimTargY = int(''.join(y for y in targAimPoint if y.isdigit()))
+         targAimTargX = alph[alph.index(targAimTargX)+targAimOffset]
+         targAimTargY += targAimOffset
+         targAimPoint = f"{targAimTargX}{targAimTargY}"
+       # If the aimTarget wasn't a target, it was coordinates. Use them.
+       if not targAimPoint:
+        targAimPoint = out[target].get('aim'+overNum).upper()
+     # Add each targets overlay to the overlays list
+     overlays.append(out[target].get('overlay'+overNum).replace("{targ}", targPoint).replace("{aim}", targAimPoint).strip("*"))
+ # Reconvert all of our map information back into the readable note format
+ dataout={x:' | '.join([f"{item[0].title()}: {item[1]}"for item in out[x].items()])for x in out}
+ # Then set everyones note again. Kinda a chainsaw instead of a scalpel situation here.
+ for target in dataout:
+  gt(target).set_note(dataout[target])
+ # If a 'clear' arg is given, clear the entire map (clears everyones notes)
+ if args.last('clear'):
+  [i.set_note(None)for i in combat().combatants]
+  people=[]
+  overlays=[]
+ # Join everything together and display the map if we aren't displaying the help
+ overlays = [f"*{overlay.strip('*')}" for overlay in overlays]
+ if args.get('location'):
+  finalMap = f"""{map}{f"" if mapsize == "JSON" else f"{mapsize}/" if mapsize else ""}{f"{mapviewlocation}:{mapviewsize}/" if mapviewsize and mapviewlocation else ""}{f'_{"_".join(walls)}/' if walls else ""}{f"@{mapoptions}/"if mapoptions else"@/"}{f'{"/".join(objects)}/' if objects else ""}{'/'.join(people+overlays)}{f"?load={'&load='.join(loadedjson)}" if loadedjson else ""}?a=1&cid={ctx.channel.id}&sid={ctx.guild.id}&uid={ctx.author.id}{"&d=1" if testVersion else ""}{f"&bg={mapbg}" if mapbg else ""}"""
+  return f"""{'' if args.last('silent') else f'-image "{finalMap}"'} -f "[Map]({finalMap})" """ + (f"""  -desc "{newline.join(desc)}"  """ if desc else "")
+</drac2>
+
+<drac2>
+dtypeSplit = [list(dtype.items())[i:i+2] for i in range(0, len(dtype), 2)]
+dtypeOut = []
+for dtype1, dtype2 in dtypeSplit:
+  dtypeOut.append(f"""{dtype1[0]:<3}- {dtype1[1]:<9} | {dtype2[0]:<3}- {dtype2[1]:<9}""")
+
+dtypehelp = f"""-f "Damage Types|```{newline.join(dtypeOut)}```" """
+
+if args.get('?') or args.get('help'):
+  help = f""" -title "Are you trapped trying to figure out `!trap`?"
+              -desc "Calling `!trap` will randomly display a trap description. If you want more control you can use the commands below:
+
+**__Trap Type__**
+`-type <damage type>[,damage level]` - Will randomly choose a trap from a list of that damage type and if there is a target `-t` and damage level, it will roll the appropriate damage dice. Example: `!trap -type f,11 -t go1` will display a fire based trap and if go1 fails its dexterity saving throw, then the damage roll will be at level 11 per `Xanathar\'s Guide To Everything` traps table.
+
+**__Target For Trap__**
+`-t <target>[|args]` - Will roll a dexterity saving throw on the target, then damage if roll failed. You can do multiple targets as well as apply additional args. Example: `!trap -t go1|dis -t go2|adv -t go3| -b 5`
+
+**__Trap DC__**
+`-dc` - Allows you to set the dc for the trap. By default it's 12.
+
+**__Location For Trap__**
+`-location <cordinate>` - This will intergrate with `!map` and places an appropriate damage type object overlay at the cordinates provided as well as show the map. If no damage type was selected, then it will place the `Trap` object overlay. Objects can be placed over multiple squares, to do so add a second coordinate after the first. Example: `!trap -type f -location a1d4` would expand a fire object overlay from A1 to D4." """ + dtypehelp
+
+  return help
+else:
+  return f""" -title "It's A Trap!" """ + (f"""  -desc "{newline.join(desc)}"  """ if desc else "")
+</drac2>
+-color color
+-footer "!trap ? | v1.0"

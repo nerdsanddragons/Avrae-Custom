@@ -1,0 +1,14 @@
+{
+    "a": ["As you stepped on to the pressure plate, you hear a subtle click, and then all of a sudden a cloud burst of acid shoots up all around you.", "You didn't see the trip wire attached to the beams and after tripping the trap, a slot above you in the cieling opens dumbing acid in a 10 ft radius.", "You set off a trap rigged to the floor which causes the floor to drop 2ft and instantly fill with acid."],
+    "b": ["hit", "slam", "pop"],
+    "c": ["ice", "popsicle", "cube"],
+    "e": ["1", "2", "3"],
+    "f": ["1", "2", "3"],
+    "o": ["1", "2", "3"],
+    "l": ["1", "2", "3"],
+    "n": ["1", "2", "3"],
+    "p": ["1", "2", "3"],
+    "s": ["1", "2", "3"],
+    "t": ["1", "2", "3"],
+    "r": ["1", "2", "3"]
+}
